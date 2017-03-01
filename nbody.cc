@@ -4,15 +4,13 @@ SDL_Window* screen;
 SDL_Renderer* renderer;
 Point orig;
 Galaxy glxy;
-double scale;
-RandCol randCol;
+double scale{10};
 
 const std::vector<Uint32> RandCol::cols = {
-    DBlack,     DWhite,        DRed,       DGreen,         DBlue,
-    DCyan,      DMagenta,      DYellow,    DPaleyellow,    DDarkyellow,
-    DDarkgreen, DPalegreen,    DMedgreen,  DDarkblue,      DPalebluegreen,
-    DPaleblue,  DBluegreen,    DGreygreen, DPalegreygreen, DYellowgreen,
-    DGreyblue,  DPalegreyblue,
+    DWhite,         DRed,         DGreen,         DCyan,
+    DMagenta,       DYellow,      DPaleyellow,    DDarkyellow,
+    DDarkgreen,     DPalegreen,   DPalebluegreen, DPaleblue,
+    DPalegreygreen, DYellowgreen, DGreyblue,      DPalegreyblue,
 };
 
 Point& Point::operator=(const Point& p) {
@@ -39,8 +37,16 @@ Vector& Vector::operator=(const Vector& p) {
 }
 
 Point Vector::toPoint() const {
-	Point p{static_cast<int>(x*scale), static_cast<int>(y*scale)};
+	Point p{static_cast<int>(x * scale), static_cast<int>(y * scale)};
 	return p;
+}
+
+void Galaxy::draw(bool showv, bool showa) const {
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	SDL_RenderClear(renderer);
+	for(auto& b : bodies)
+		b.draw(showv, showa);
+	SDL_RenderPresent(renderer);
 }
 
 bool initdraw(std::string& err) {

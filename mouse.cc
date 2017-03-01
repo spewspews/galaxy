@@ -10,12 +10,10 @@ void Mouse::update() {
 }
 
 void Mouse::mkbody() {
-	auto b = glxy.newBody();
+	auto& b = glxy.newBody();
 	b.p = vp;
-	b.color = randCol();
 	for(;;) {
-		glxy.draw();
-		b.draw(false, false);
+		glxy.draw(false, false);
 		update();
 		if(!(buttons & SDL_BUTTON_LMASK))
 			break;

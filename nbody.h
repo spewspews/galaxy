@@ -29,14 +29,13 @@
 #define DPalegreyblue 0x4993DDFF
 
 class RandCol {
-	std::random_device r;
 	static const std::vector<Uint32> cols;
 	std::default_random_engine eng;
 	std::uniform_int_distribution<int> dist;
 
   public:
-	RandCol() : eng{r()}, dist{0, static_cast<int>(cols.size())} {}
-	Uint32 operator()() { return dist(eng); }
+	RandCol() : eng{0}, dist{0, static_cast<int>(cols.size())} {}
+	Uint32 operator()() { return cols[dist(eng)]; }
 };
 
 class Point;
@@ -61,12 +60,14 @@ class Point {
 };
 
 class Body {
+	static Uint32 getRandomColor();
+
   public:
 	Vector p, v, a, newa;
 	double size, mass;
 	Uint32 color;
 
-	Body() : p{}, v{}, a{}, newa{}, size{1}, mass{1}, color{} {}
+	Body() : p{}, v{}, a{}, newa{}, size{1}, mass{1}, color{getRandomColor()} {}
 	void draw(bool, bool) const;
 };
 
@@ -92,7 +93,7 @@ class Galaxy {
 		bodies.push_back({});
 		return bodies.back();
 	}
-	void draw() const;
+	void draw(bool, bool) const;
 };
 
 extern SDL_Window* screen;
