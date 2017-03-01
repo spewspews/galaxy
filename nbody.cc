@@ -1,20 +1,46 @@
 #include "nbody.h"
 
 SDL_Window* screen;
+SDL_Renderer* renderer;
 Point orig;
 Galaxy glxy;
+double scale;
 RandCol randCol;
 
+const std::vector<Uint32> RandCol::cols = {
+    DBlack,     DWhite,        DRed,       DGreen,         DBlue,
+    DCyan,      DMagenta,      DYellow,    DPaleyellow,    DDarkyellow,
+    DDarkgreen, DPalegreen,    DMedgreen,  DDarkblue,      DPalebluegreen,
+    DPaleblue,  DBluegreen,    DGreygreen, DPalegreygreen, DYellowgreen,
+    DGreyblue,  DPalegreyblue,
+};
+
 Point& Point::operator=(const Point& p) {
-	this->x = p.x;
-	this->y = p.y;
+	x = p.x;
+	y = p.y;
 	return *this;
 }
 
 Point& Point::operator/=(int s) {
-	this->x /= s;
-	this->y /= s;
+	x /= s;
+	y /= s;
 	return *this;
+}
+
+Vector Point::toVector() const {
+	Vector v{static_cast<double>(x) / scale, static_cast<double>(y) / scale};
+	return v;
+}
+
+Vector& Vector::operator=(const Vector& p) {
+	x = p.x;
+	y = p.y;
+	return *this;
+}
+
+Point Vector::toPoint() const {
+	Point p{static_cast<int>(x*scale), static_cast<int>(y*scale)};
+	return p;
 }
 
 bool initdraw(std::string& err) {
@@ -25,12 +51,19 @@ bool initdraw(std::string& err) {
 		return false;
 	}
 
-	auto win =
+	screen =
 	    SDL_CreateWindow("Galaxy", SDL_WINDOWPOS_UNDEFINED,
 	                     SDL_WINDOWPOS_UNDEFINED, 10, 10, SDL_WINDOW_RESIZABLE);
-	if(win == nullptr) {
+	if(screen == nullptr) {
 		std::ostringstream ss;
-		ss << "Could not initialize SDL: " << SDL_GetError();
+		ss << "Could not create window: " << SDL_GetError();
+		err = ss.str();
+		return false;
+	}
+	renderer = SDL_CreateRenderer(screen, -1, 0);
+	if(renderer == nullptr) {
+		std::ostringstream ss;
+		ss << "Could not create renderer: " << SDL_GetError();
 		err = ss.str();
 		return false;
 	}

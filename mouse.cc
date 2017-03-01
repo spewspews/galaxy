@@ -2,28 +2,45 @@
 
 Mouse mouse;
 
-void Mouse::operator()() {
-	this->update();
-	switch(but) {
-	case SDL_BUTTON_LMASK:
-		this->mkbody();
-		break;
-	case SDL_BUTTON_RMASK:
-		this->move();
-		break;
-	}
-}
-
 void Mouse::update() {
 	SDL_PumpEvents();
-	but = SDL_GetMouseState(&this->pos.x, &this->pos.y);
+	buttons = SDL_GetMouseState(&p.x, &p.y);
+	vp = p.toVector();
 	SDL_FlushEvent(SDL_MOUSEBUTTONDOWN);
 }
 
 void Mouse::mkbody() {
 	auto b = glxy.newBody();
-	this->setPos(b);
+	b.p = vp;
 	b.color = randCol();
+	for(;;) {
+		glxy.draw();
+		b.draw(false, false);
+		update();
+		if(!(buttons & SDL_BUTTON_LMASK))
+			break;
+		if(buttons == (SDL_BUTTON_LMASK | SDL_BUTTON_MMASK))
+			setSize(b);
+		else if(buttons == (SDL_BUTTON_LMASK | SDL_BUTTON_MMASK))
+			setVel(b);
+		else
+			b.p = vp;
+	}
 }
 
+void Mouse::setSize(Body& b) {}
+void Mouse::setVel(Body& b) {}
+
 void Mouse::move() {}
+
+void Mouse::operator()() {
+	update();
+	switch(buttons) {
+	case SDL_BUTTON_LMASK:
+		mkbody();
+		break;
+	case SDL_BUTTON_RMASK:
+		move();
+		break;
+	}
+}
