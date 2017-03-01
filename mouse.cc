@@ -3,6 +3,7 @@
 Mouse mouse;
 
 void Mouse::update() {
+	SDL_RenderPresent(renderer);
 	SDL_Delay(5);
 	SDL_PumpEvents();
 	buttons = SDL_GetMouseState(&p.x, &p.y);
@@ -14,7 +15,8 @@ void Mouse::body() {
 	auto& b = glxy.newBody();
 	b.p = vp;
 	for(;;) {
-		glxy.draw(false, false);
+		glxy.draw();
+		b.drawVel();
 		update();
 		if(!(buttons & SDL_BUTTON_LMASK))
 			break;
@@ -25,6 +27,7 @@ void Mouse::body() {
 		else
 			b.p = vp;
 	}
+	glxy.center();
 }
 
 void Mouse::setSize(Body& b) {
@@ -33,7 +36,8 @@ void Mouse::setSize(Body& b) {
 		auto d = vp - b.p;
 		b.size = std::hypot(d.x, d.y);
 		b.mass = b.size * b.size * b.size;
-		glxy.draw(false, false);
+		glxy.draw();
+		b.drawVel();
 		update();
 		if(buttons != (SDL_BUTTON_LMASK | SDL_BUTTON_MMASK))
 			break;
@@ -45,9 +49,8 @@ void Mouse::setVel(Body& b) {
 	auto oldp = p;
 	for(;;) {
 		b.v = vp - b.p;
-		glxy.draw(false, false);
+		glxy.draw();
 		b.drawVel();
-		SDL_RenderPresent(renderer);
 		update();
 		if(buttons != (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
 			break;
@@ -63,7 +66,7 @@ void Mouse::move() {
 		oldp = vp;
 		for(auto& b : glxy.bodies)
 			b.p += off;
-		glxy.draw(false, false);
+		glxy.draw();
 		if(buttons != SDL_BUTTON_RMASK)
 			break;
 	}

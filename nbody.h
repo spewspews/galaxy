@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <iostream>
+#include <mutex>
 #include <random>
 #include <sstream>
 #include <string>
@@ -43,10 +44,14 @@ class Point;
 class Vector {
   public:
 	double x, y;
+	Vector() : x{0}, y{0} {};
+	Vector(double a, double b) : x{a}, y{b} {};
 	Vector& operator=(const Vector& v);
-	Vector operator-(const Vector& v) const;
+	Vector operator-(const Vector& v) const { return {x - v.x, y - v.y}; }
+	Vector operator*(double m) const { return {x * m, y * m}; }
 	Vector& operator+=(const Vector& v);
 	Vector& operator-=(const Vector& v);
+	Vector& operator/=(double);
 	Point toPoint() const;
 };
 
@@ -77,8 +82,9 @@ class Body {
 	      r{static_cast<Uint8>(color >> 3 & 0xff)},
 	      g{static_cast<Uint8>(color >> 2 & 0xff)},
 	      b{static_cast<Uint8>(color >> 1 & 0xff)} {}
-	void draw(bool, bool) const;
+	void draw() const;
 	void drawVel() const;
+	void drawAcc() const;
 };
 
 class Mouse {
@@ -102,7 +108,43 @@ class Galaxy {
 		bodies.push_back({});
 		return bodies.back();
 	}
-	void draw(bool, bool) const;
+	void draw() const;
+	void center();
+};
+
+class Quad;
+
+class QB {
+  public:
+	enum Type { quad, space, empty } t;
+	union {
+		Quad* q;
+		Body* b;
+	};
+	QB() : t{empty} {}
+};
+
+class Quad {
+  public:
+	Vector pos;
+	double mass;
+	QB c[4];
+};
+
+class BHTree {
+	std::vector<Quad> quads;
+	QB root;
+	void insert(Body&);
+	double lim;
+
+  public:
+	BHTree() : lim{10} {};
+	Quad& newQuad() {
+		quads.push_back({});
+		return quads.back();
+	}
+	void insert(Galaxy&);
+	void clear() { quads.clear(); }
 };
 
 extern SDL_Window* screen;
@@ -111,3 +153,5 @@ extern Mouse mouse;
 extern Galaxy glxy;
 extern double scale;
 extern RandCol randCol;
+extern bool showv, showa;
+extern std::mutex glxyMutex;

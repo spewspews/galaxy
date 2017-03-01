@@ -4,6 +4,8 @@ SDL_Window* screen;
 SDL_Renderer* renderer;
 Galaxy glxy;
 double scale{10};
+bool showv, showa;
+std::mutex glxyMutex;
 
 const std::vector<Uint32> RandCol::cols = {
     DWhite,         DRed,         DGreen,         DCyan,
@@ -30,8 +32,6 @@ Vector Point::toVector() const {
 	return {static_cast<double>(x) / scale, static_cast<double>(y) / scale};
 }
 
-Vector Vector::operator-(const Vector& p) const { return {x - p.x, y - p.y}; }
-
 Vector& Vector::operator=(const Vector& p) {
 	x = p.x;
 	y = p.y;
@@ -49,54 +49,79 @@ Vector& Vector::operator-=(const Vector& p) {
 	y -= p.y;
 	return *this;
 }
+Vector& Vector::operator/=(double f) {
+	x /= f;
+	y /= f;
+	return *this;
+}
 
 Point Vector::toPoint() const {
 	return {static_cast<int>(x * scale), static_cast<int>(y * scale)};
 }
 
-void Galaxy::draw(bool showv, bool showa) const {
+void Galaxy::draw() const {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
-	for(auto& b : bodies)
-		b.draw(showv, showa);
+	for(auto& b : bodies) {
+		b.draw();
+		if(showv)
+			b.drawVel();
+		if(showa)
+			b.drawAcc();
+	}
 	SDL_RenderPresent(renderer);
 }
 
-bool initdraw(std::string& err) {
+void Galaxy::center() {
+	Vector gc, gcv;
+	double mass = 0;
+	for(auto& b : glxy.bodies) {
+		gc += b.p * b.mass;
+		gcv += b.v * b.mass;
+		mass += b.mass;
+	}
+	gc /= mass;
+	gcv /= mass;
+	for(auto& b : glxy.bodies) {
+		b.p -= gc;
+		b.v -= gcv;
+	}
+}
+
+bool initdraw() {
 	if(SDL_Init(SDL_INIT_VIDEO) < 0) {
-		std::ostringstream ss;
-		ss << "Could not initialize SDL: " << SDL_GetError();
-		err = ss.str();
-		return false;
+		std::cerr << "Could not initialize SDL: " << SDL_GetError() << "\n";
+		exit(1);
 	}
 
-	screen =
-	    SDL_CreateWindow("Galaxy", SDL_WINDOWPOS_UNDEFINED,
-	                     SDL_WINDOWPOS_UNDEFINED, 640, 640, SDL_WINDOW_RESIZABLE);
+	screen = SDL_CreateWindow("Galaxy", SDL_WINDOWPOS_UNDEFINED,
+	                          SDL_WINDOWPOS_UNDEFINED, 640, 640,
+	                          SDL_WINDOW_RESIZABLE);
 	if(screen == nullptr) {
-		std::ostringstream ss;
-		ss << "Could not create window: " << SDL_GetError();
-		err = ss.str();
-		return false;
+		std::cerr << "Could not create window: " << SDL_GetError() << "\n";
+		exit(1);
 	}
+
 	renderer = SDL_CreateRenderer(screen, -1, 0);
 	if(renderer == nullptr) {
-		std::ostringstream ss;
-		ss << "Could not create renderer: " << SDL_GetError();
-		err = ss.str();
-		return false;
+		std::cerr << "Could not create renderer: " << SDL_GetError() << "\n";
+		exit(1);
 	}
 	return true;
 }
 
-int main(void) {
-	std::string err;
-	if(!initdraw(err)) {
-		std::cerr << err << "\n";
-		exit(1);
+void simulate() {
+	BHTree tree;
+	for(;;) {
+		std::unique_lock<std::mutex> lock{glxyMutex};
+		glxy.draw();
+		tree.insert(glxy);
 	}
+}
 
-	glxy.draw(false, false);
+int main() {
+	initdraw();
+	glxy.draw();
 
 	for(;;) {
 		SDL_Event e;
@@ -118,6 +143,7 @@ int main(void) {
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
+				std::unique_lock<std::mutex> lock{glxyMutex};
 				mouse();
 				break;
 			}
