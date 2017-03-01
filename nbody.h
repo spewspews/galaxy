@@ -44,6 +44,9 @@ class Vector {
   public:
 	double x, y;
 	Vector& operator=(const Vector& v);
+	Vector operator-(const Vector& v) const;
+	Vector& operator+=(const Vector& v);
+	Vector& operator-=(const Vector& v);
 	Point toPoint() const;
 };
 
@@ -56,24 +59,31 @@ class Point {
 
 	Point& operator=(const Point&);
 	Point& operator/=(int);
+	Point operator+(const Point&) const;
 	Vector toVector() const;
 };
 
 class Body {
 	static Uint32 getRandomColor();
+	Uint32 color;
 
   public:
 	Vector p, v, a, newa;
 	double size, mass;
-	Uint32 color;
+	Uint8 r, g, b;
 
-	Body() : p{}, v{}, a{}, newa{}, size{1}, mass{1}, color{getRandomColor()} {}
+	Body()
+	    : color{getRandomColor()}, p{}, v{}, a{}, newa{}, size{}, mass{},
+	      r{static_cast<Uint8>(color >> 3 & 0xff)},
+	      g{static_cast<Uint8>(color >> 2 & 0xff)},
+	      b{static_cast<Uint8>(color >> 1 & 0xff)} {}
 	void draw(bool, bool) const;
+	void drawVel() const;
 };
 
 class Mouse {
 	Uint32 buttons;
-	void mkbody();
+	void body();
 	void move();
 	void setSize(Body&);
 	void setVel(Body&);
@@ -86,9 +96,8 @@ class Mouse {
 };
 
 class Galaxy {
-	std::vector<Body> bodies;
-
   public:
+	std::vector<Body> bodies;
 	Body& newBody() {
 		bodies.push_back({});
 		return bodies.back();
@@ -99,7 +108,6 @@ class Galaxy {
 extern SDL_Window* screen;
 extern SDL_Renderer* renderer;
 extern Mouse mouse;
-extern Point orig;
 extern Galaxy glxy;
 extern double scale;
 extern RandCol randCol;

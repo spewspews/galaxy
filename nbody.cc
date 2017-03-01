@@ -2,7 +2,6 @@
 
 SDL_Window* screen;
 SDL_Renderer* renderer;
-Point orig;
 Galaxy glxy;
 double scale{10};
 
@@ -25,10 +24,13 @@ Point& Point::operator/=(int s) {
 	return *this;
 }
 
+Point Point::operator+(const Point& p) const { return {x + p.x, y + p.y}; }
+
 Vector Point::toVector() const {
-	Vector v{static_cast<double>(x) / scale, static_cast<double>(y) / scale};
-	return v;
+	return {static_cast<double>(x) / scale, static_cast<double>(y) / scale};
 }
+
+Vector Vector::operator-(const Vector& p) const { return {x - p.x, y - p.y}; }
 
 Vector& Vector::operator=(const Vector& p) {
 	x = p.x;
@@ -36,9 +38,20 @@ Vector& Vector::operator=(const Vector& p) {
 	return *this;
 }
 
+Vector& Vector::operator+=(const Vector& p) {
+	x += p.x;
+	y += p.y;
+	return *this;
+}
+
+Vector& Vector::operator-=(const Vector& p) {
+	x -= p.x;
+	y -= p.y;
+	return *this;
+}
+
 Point Vector::toPoint() const {
-	Point p{static_cast<int>(x * scale), static_cast<int>(y * scale)};
-	return p;
+	return {static_cast<int>(x * scale), static_cast<int>(y * scale)};
 }
 
 void Galaxy::draw(bool showv, bool showa) const {
@@ -83,8 +96,7 @@ int main(void) {
 		exit(1);
 	}
 
-	SDL_GetWindowSize(screen, &orig.x, &orig.y);
-	orig /= 2;
+	glxy.draw(false, false);
 
 	for(;;) {
 		SDL_Event e;
@@ -102,8 +114,6 @@ int main(void) {
 			case SDL_WINDOWEVENT:
 				if(e.window.event == SDL_WINDOWEVENT_RESIZED) {
 					SDL_SetWindowSize(screen, e.window.data1, e.window.data2);
-					orig = {e.window.data1, e.window.data2};
-					orig /= 2;
 				}
 				break;
 
@@ -112,5 +122,6 @@ int main(void) {
 				break;
 			}
 		}
+		SDL_Delay(100);
 	}
 }
