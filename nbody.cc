@@ -2,6 +2,8 @@
 
 SDL_Window* screen;
 Point orig;
+Galaxy glxy;
+RandCol randCol;
 
 Point& Point::operator=(const Point& p) {
 	this->x = p.x;

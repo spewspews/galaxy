@@ -20,6 +20,10 @@ void Mouse::update() {
 	SDL_FlushEvent(SDL_MOUSEBUTTONDOWN);
 }
 
-void Mouse::mkbody() {}
+void Mouse::mkbody() {
+	auto b = glxy.newBody();
+	this->setPos(b);
+	b.color = randCol();
+}
 
 void Mouse::move() {}
