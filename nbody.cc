@@ -72,7 +72,7 @@ bool initdraw(std::string& err) {
 
 	screen =
 	    SDL_CreateWindow("Galaxy", SDL_WINDOWPOS_UNDEFINED,
-	                     SDL_WINDOWPOS_UNDEFINED, 10, 10, SDL_WINDOW_RESIZABLE);
+	                     SDL_WINDOWPOS_UNDEFINED, 640, 640, SDL_WINDOW_RESIZABLE);
 	if(screen == nullptr) {
 		std::ostringstream ss;
 		ss << "Could not create window: " << SDL_GetError();
