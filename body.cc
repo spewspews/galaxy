@@ -7,22 +7,21 @@ Uint32 Body::getRandomColor() {
 }
 
 void Body::draw() const {
-	auto pos = p.toPoint();
-	auto drawSize = static_cast<int>(size * scale);
-	if(drawSize == 0)
-		drawSize = 2;
-	auto err =
+	auto pos = glxy.toPoint(p);
+	auto drawSize = static_cast<int>(size * glxy.scale);
+	auto err1 = aacircleRGBA(renderer, pos.x, pos.y, drawSize, r, g, b, 0xff);
+	auto err2 =
 	    filledCircleRGBA(renderer, pos.x, pos.y, drawSize, r, g, b, 0xff);
-	if(err == -1) {
+	if(err1 == -1 || err2 == -1) {
 		std::cerr << "Could not draw circle: " << SDL_GetError();
 		exit(1);
 	}
 }
 
 void Body::drawVel() const {
-	auto pos = p.toPoint();
+	auto pos = glxy.toPoint(p);
 	auto vvec = p + v;
-	auto vel = vvec.toPoint();
+	auto vel = glxy.toPoint(vvec);
 	auto err = aalineRGBA(renderer, pos.x, pos.y, vel.x, vel.y, r, g, b, 0xff);
 	if(err == -1) {
 		std::cerr << "Could not draw velocity: " << SDL_GetError();
@@ -31,8 +30,8 @@ void Body::drawVel() const {
 }
 
 void Body::drawAcc() const {
-	auto pos = p.toPoint();
-	auto endAcc = pos + a.toPoint();
+	auto pos = glxy.toPoint(p);
+	auto endAcc = pos + glxy.toPoint(a);
 	auto err =
 	    aalineRGBA(renderer, pos.x, pos.y, endAcc.x, endAcc.y, r, g, b, 0xff);
 	if(err == -1) {

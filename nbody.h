@@ -1,9 +1,10 @@
 #include <SDL2/SDL.h>
+#include <array>
+#include <chrono>
 #include <iostream>
 #include <mutex>
 #include <random>
-#include <sstream>
-#include <string>
+#include <thread>
 #include <vector>
 
 #define DBlack 0x000000FF
@@ -44,8 +45,10 @@ class Point;
 class Vector {
   public:
 	double x, y;
+
 	Vector() : x{0}, y{0} {};
 	Vector(double a, double b) : x{a}, y{b} {};
+
 	Vector& operator=(const Vector& v);
 	Vector operator-(const Vector& v) const { return {x - v.x, y - v.y}; }
 	Vector operator+(const Vector& v) const { return {x + v.x, y + v.y}; };
@@ -54,74 +57,56 @@ class Vector {
 	Vector& operator+=(const Vector& v);
 	Vector& operator-=(const Vector& v);
 	Vector& operator/=(double);
-	Point toPoint() const;
+	friend std::ostream& operator<<(std::ostream&, const Vector&);
 };
 
 class Point {
   public:
 	int x, y;
+
 	Point() : x{0}, y{0} {}
 	Point(SDL_Point& p) : x{p.x}, y{p.y} {}
 	Point(int a, int b) : x{a}, y{b} {}
 
 	Point& operator=(const Point&);
 	Point& operator/=(int);
-	Point operator+(const Point&) const;
-	Vector toVector() const;
+	Point& operator+=(const Point&);
+	Point operator+(const Point& p) const { return {x + p.x, y + p.y}; }
+	Point operator-(const Point& p) const { return {x - p.x, y - p.y}; }
+	friend std::ostream& operator<<(std::ostream&, const Point&);
 };
 
 class Body {
+	Uint32 color_;
+
 	static Uint32 getRandomColor();
-	Uint32 color;
 
   public:
 	Vector p, v, a, newa;
 	double size, mass;
 	Uint8 r, g, b;
 
-	Body()
-	    : color{getRandomColor()}, p{}, v{}, a{}, newa{}, size{}, mass{},
-	      r{static_cast<Uint8>(color >> 3 & 0xff)},
-	      g{static_cast<Uint8>(color >> 2 & 0xff)},
-	      b{static_cast<Uint8>(color >> 1 & 0xff)} {}
+	Body(double scale)
+	    : color_{getRandomColor()}, p{}, v{}, a{}, newa{}, size{2.0 / scale},
+	      mass{scale * scale * scale},
+	      r{static_cast<Uint8>(color_ >> 3 & 0xff)},
+	      g{static_cast<Uint8>(color_ >> 2 & 0xff)},
+	      b{static_cast<Uint8>(color_ >> 1 & 0xff)} {}
+
 	void draw() const;
 	void drawVel() const;
 	void drawAcc() const;
-};
-
-class Mouse {
-	Uint32 buttons;
-	void body();
-	void move();
-	void setSize(Body&);
-	void setVel(Body&);
-
-  public:
-	Point p;
-	Vector vp;
-	void operator()();
-	void update();
-};
-
-class Galaxy {
-  public:
-	std::vector<Body> bodies;
-	Body& newBody() {
-		bodies.push_back({});
-		return bodies.back();
-	}
-	void draw() const;
-	Vector center();
+	friend std::ostream& operator<<(std::ostream&, const Body&);
 };
 
 class Quad;
 
 class QB {
   public:
-	enum { body, quad, empty } t;
+	enum { empty, body, quad } t;
 	union {
 		Quad* q;
-		Body* b;
+		const Body* b;
 	};
 	QB() : t{empty} {}
 };
@@ -130,46 +115,74 @@ class Quad {
   public:
 	Vector p;
 	double mass;
-	QB c[4];
+	std::array<QB, 4> c;
 	Quad() {}
-	Quad(const Body& b) : p{b.p}, mass{b.mass} {}
+	void setPosMass(const Body& b) {
+		p = b.p;
+		mass = b.mass;
+	}
+	void clearChild() { c.fill({}); }
+	friend std::ostream& operator<<(std::ostream&, const Quad&);
+};
+
+class Galaxy {
+  public:
+	double limit;
+	Point orig;
+	double scale;
+	std::vector<Body> bodies;
+	std::mutex mutex;
+
+	Galaxy() : limit{10}, orig{0, 0}, scale{10} {};
+
+	Body& newBody() {
+		bodies.push_back({scale});
+		return bodies.back();
+	}
+	void checkLimit(const Vector&);
+	void draw() const;
+	Point center();
+	void toVector(Vector&, const Point&) const;
+	void toPoint(Point&, const Vector&) const;
+	Vector toVector(const Point&) const;
+	Point toPoint(const Vector&) const;
 };
 
 class BHTree {
-	std::vector<Quad> quads;
-	QB root;
-	bool insert(Body&, double);
-	double lim;
-	size_t size;
-	size_t capacity;
-	bool getQuad(Quad& q, const Body& b) {
-		if(size == capacity) {
-			capacity *= 2;
-			quads.reserve(capacity);
-			clear();
-			return false;
-		}
-		quads.push_back({b});
-		size++;
-		q = quads.back();
-		return true;
-	}
+	std::vector<Quad> quads_;
+	QB root_;
+	size_t i_, size_;
+	bool insert(const Body&, double);
+	Quad* getQuad(const Body&);
 
   public:
-	BHTree() : quads{5}, lim{10}, capacity{quads.capacity()} {};
+	BHTree() : quads_{5}, size_{quads_.size()} {};
 	void insert(Galaxy&);
-	void clear() {
-		quads.clear();
-		size = 0;
+	void resize() {
+		size_ *= 2;
+		quads_.resize(size_);
 	}
+};
+
+class Mouse {
+	Uint32 buttons_;
+
+	void body();
+	void move();
+	void setSize(Body&);
+	void setVel(Body&);
+
+  public:
+	Point p;
+	Vector vp;
+
+	void operator()();
+	void update();
+	void updatePos(Sint32, Sint32);
 };
 
 extern SDL_Window* screen;
 extern SDL_Renderer* renderer;
 extern Mouse mouse;
-extern Galaxy glxy;
-extern double scale;
-extern RandCol randCol;
 extern bool showv, showa;
-extern std::mutex glxyMutex;
-extern Vector offset;
+extern Galaxy glxy;

@@ -3,10 +3,7 @@
 SDL_Window* screen;
 SDL_Renderer* renderer;
 Galaxy glxy;
-double scale{10};
 bool showv, showa;
-std::mutex glxyMutex;
-Vector offset;
 
 const std::vector<Uint32> RandCol::cols = {
     DWhite,         DRed,         DGreen,         DCyan,
@@ -14,6 +11,26 @@ const std::vector<Uint32> RandCol::cols = {
     DDarkgreen,     DPalegreen,   DPalebluegreen, DPaleblue,
     DPalegreygreen, DYellowgreen, DGreyblue,      DPalegreyblue,
 };
+
+std::ostream& operator<<(std::ostream& os, const Point& p) {
+	os << "Point{" << p.x << ", " << p.y << "}";
+	return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Vector& v) {
+	os << "Vector{" << v.x << ", " << v.y << "}";
+	return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Body& b) {
+	os << "Body{pos[" << b.p << "] vel[" << b.v << "]}";
+	return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Quad& q) {
+	os << "Quad{p[" << q.p << "]}";
+	return os;
+}
 
 Point& Point::operator=(const Point& p) {
 	x = p.x;
@@ -27,11 +44,10 @@ Point& Point::operator/=(int s) {
 	return *this;
 }
 
-Point Point::operator+(const Point& p) const { return {x + p.x, y + p.y}; }
-
-Vector Point::toVector() const {
-	return {static_cast<double>(x) / scale - offset.x,
-	        static_cast<double>(y) / scale - offset.y};
+Point& Point::operator+=(const Point& p) {
+	x += p.x;
+	y += p.y;
+	return *this;
 }
 
 Vector& Vector::operator=(const Vector& p) {
@@ -57,15 +73,12 @@ Vector& Vector::operator/=(double f) {
 	return *this;
 }
 
-Point Vector::toPoint() const {
-	return {static_cast<int>((x + offset.x) * scale),
-	        static_cast<int>((y + offset.y) * scale)};
-}
-
 void Galaxy::draw() const {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
+	std::cerr << "Galaxy::draw: ENTER\n";
 	for(auto& b : bodies) {
+		std::cerr << "Galaxy::draw: b " << b << "\n";
 		b.draw();
 		if(showv)
 			b.drawVel();
@@ -75,7 +88,16 @@ void Galaxy::draw() const {
 	SDL_RenderPresent(renderer);
 }
 
-Vector Galaxy::center() {
+void Galaxy::checkLimit(const Vector& v) {
+	auto f = fabs(v.x);
+	if(f > limit / 2)
+		limit = f * 2;
+	f = fabs(v.y);
+	if(f > limit / 2)
+		limit = f * 2;
+}
+
+Point Galaxy::center() {
 	Vector gc, gcv;
 	double mass = 0;
 	for(auto& b : glxy.bodies) {
@@ -89,7 +111,27 @@ Vector Galaxy::center() {
 		b.p -= gc;
 		b.v -= gcv;
 	}
-	return gc;
+	return toPoint(gc);
+}
+
+void Galaxy::toVector(Vector& v, const Point& p) const {
+	v.x = static_cast<double>(p.x - orig.x) / scale;
+	v.y = static_cast<double>(p.y - orig.y) / scale;
+}
+
+void Galaxy::toPoint(Point& p, const Vector& v) const {
+	p.x = static_cast<int>(v.x * scale) + orig.x;
+	p.y = static_cast<int>(v.y * scale) + orig.y;
+}
+
+Vector Galaxy::toVector(const Point& p) const {
+	return {static_cast<double>(p.x - orig.x) / scale,
+	        static_cast<double>(p.y - orig.y) / scale};
+}
+
+Point Galaxy::toPoint(const Vector& v) const {
+	return {static_cast<int>(v.x * scale) + orig.x,
+	        static_cast<int>(v.y * scale) + orig.y};
 }
 
 bool initdraw() {
@@ -117,15 +159,19 @@ bool initdraw() {
 void simulate() {
 	BHTree tree;
 	for(;;) {
-		std::unique_lock<std::mutex> lock{glxyMutex};
+		glxy.mutex.lock();
+		std::cerr << "top of simulate loop\n";
 		glxy.draw();
 		tree.insert(glxy);
+		glxy.mutex.unlock();
+		std::this_thread::sleep_for(std::chrono::microseconds{10});
 	}
 }
 
 int main() {
 	initdraw();
 	glxy.draw();
+	std::thread simthread{simulate};
 
 	for(;;) {
 		SDL_Event e;
@@ -147,7 +193,6 @@ int main() {
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
-				std::unique_lock<std::mutex> lock{glxyMutex};
 				mouse();
 				break;
 			}
