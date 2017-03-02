@@ -27,7 +27,8 @@ void Mouse::body() {
 		else
 			b.p = vp;
 	}
-	glxy.center();
+	offset += glxy.center();
+	glxy.draw();
 }
 
 void Mouse::setSize(Body& b) {

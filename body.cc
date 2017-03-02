@@ -21,9 +21,9 @@ void Body::draw() const {
 
 void Body::drawVel() const {
 	auto pos = p.toPoint();
-	auto endVel = pos + v.toPoint();
-	auto err =
-	    aalineRGBA(renderer, pos.x, pos.y, endVel.x, endVel.y, r, g, b, 0xff);
+	auto vvec = p + v;
+	auto vel = vvec.toPoint();
+	auto err = aalineRGBA(renderer, pos.x, pos.y, vel.x, vel.y, r, g, b, 0xff);
 	if(err == -1) {
 		std::cerr << "Could not draw velocity: " << SDL_GetError();
 		exit(1);

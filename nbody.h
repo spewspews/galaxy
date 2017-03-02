@@ -48,7 +48,9 @@ class Vector {
 	Vector(double a, double b) : x{a}, y{b} {};
 	Vector& operator=(const Vector& v);
 	Vector operator-(const Vector& v) const { return {x - v.x, y - v.y}; }
+	Vector operator+(const Vector& v) const { return {x + v.x, y + v.y}; };
 	Vector operator*(double m) const { return {x * m, y * m}; }
+	Vector operator/(double m) const { return {x / m, y / m}; }
 	Vector& operator+=(const Vector& v);
 	Vector& operator-=(const Vector& v);
 	Vector& operator/=(double);
@@ -109,14 +111,14 @@ class Galaxy {
 		return bodies.back();
 	}
 	void draw() const;
-	void center();
+	Vector center();
 };
 
 class Quad;
 
 class QB {
   public:
-	enum Type { quad, space, empty } t;
+	enum { body, quad, empty } t;
 	union {
 		Quad* q;
 		Body* b;
@@ -126,25 +128,41 @@ class QB {
 
 class Quad {
   public:
-	Vector pos;
+	Vector p;
 	double mass;
 	QB c[4];
+	void fromBody(const Body& b) {
+		p = b.p;
+		mass = b.mass;
+	}
 };
 
 class BHTree {
 	std::vector<Quad> quads;
 	QB root;
-	void insert(Body&);
+	bool insert(Body&, double);
 	double lim;
+	size_t size;
+	size_t capacity;
+	bool newQuad(Quad& q) {
+		quads.push_back({});
+		size++;
+		if(size > capacity) {
+			capacity = quads.capacity();
+			clear();
+			return false;
+		}
+		q = quads.back();
+		return true;
+	}
 
   public:
-	BHTree() : lim{10} {};
-	Quad& newQuad() {
-		quads.push_back({});
-		return quads.back();
-	}
+	BHTree() : quads{5}, lim{10}, capacity{quads.capacity()} {};
 	void insert(Galaxy&);
-	void clear() { quads.clear(); }
+	void clear() {
+		quads.clear();
+		size = 0;
+	}
 };
 
 extern SDL_Window* screen;
@@ -155,3 +173,4 @@ extern double scale;
 extern RandCol randCol;
 extern bool showv, showa;
 extern std::mutex glxyMutex;
+extern Vector offset;

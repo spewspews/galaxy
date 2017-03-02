@@ -6,6 +6,7 @@ Galaxy glxy;
 double scale{10};
 bool showv, showa;
 std::mutex glxyMutex;
+Vector offset;
 
 const std::vector<Uint32> RandCol::cols = {
     DWhite,         DRed,         DGreen,         DCyan,
@@ -29,7 +30,8 @@ Point& Point::operator/=(int s) {
 Point Point::operator+(const Point& p) const { return {x + p.x, y + p.y}; }
 
 Vector Point::toVector() const {
-	return {static_cast<double>(x) / scale, static_cast<double>(y) / scale};
+	return {static_cast<double>(x) / scale - offset.x,
+	        static_cast<double>(y) / scale - offset.y};
 }
 
 Vector& Vector::operator=(const Vector& p) {
@@ -56,7 +58,8 @@ Vector& Vector::operator/=(double f) {
 }
 
 Point Vector::toPoint() const {
-	return {static_cast<int>(x * scale), static_cast<int>(y * scale)};
+	return {static_cast<int>((x + offset.x) * scale),
+	        static_cast<int>((y + offset.y) * scale)};
 }
 
 void Galaxy::draw() const {
@@ -72,7 +75,7 @@ void Galaxy::draw() const {
 	SDL_RenderPresent(renderer);
 }
 
-void Galaxy::center() {
+Vector Galaxy::center() {
 	Vector gc, gcv;
 	double mass = 0;
 	for(auto& b : glxy.bodies) {
@@ -86,6 +89,7 @@ void Galaxy::center() {
 		b.p -= gc;
 		b.v -= gcv;
 	}
+	return gc;
 }
 
 bool initdraw() {
