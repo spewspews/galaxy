@@ -14,9 +14,8 @@ bool BHTree::insert(Body& nb, double size) {
 			auto qxy = b.p.x < q.x ? 0 : 1;
 			qxy |= b.p.y < q.y ? 0 : 2;
 			qb->t = QB::quad;
-			if(!newQuad(*qb->q))
+			if(!getQuad(*qb->q, b))
 				return false;
-			qb->q->fromBody(b);
 			qb->q->c[qxy].t = QB::body;
 			qb->q->c[qxy].b = &b;
 		}

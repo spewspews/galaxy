@@ -131,10 +131,8 @@ class Quad {
 	Vector p;
 	double mass;
 	QB c[4];
-	void fromBody(const Body& b) {
-		p = b.p;
-		mass = b.mass;
-	}
+	Quad() {}
+	Quad(const Body& b) : p{b.p}, mass{b.mass} {}
 };
 
 class BHTree {
@@ -144,14 +142,15 @@ class BHTree {
 	double lim;
 	size_t size;
 	size_t capacity;
-	bool newQuad(Quad& q) {
-		quads.push_back({});
-		size++;
-		if(size > capacity) {
-			capacity = quads.capacity();
+	bool getQuad(Quad& q, const Body& b) {
+		if(size == capacity) {
+			capacity *= 2;
+			quads.reserve(capacity);
 			clear();
 			return false;
 		}
+		quads.push_back({b});
+		size++;
 		q = quads.back();
 		return true;
 	}
