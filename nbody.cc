@@ -134,7 +134,7 @@ Point Galaxy::toPoint(const Vector& v) const {
 	        static_cast<int>(v.y * scale) + orig.y};
 }
 
-bool initdraw() {
+void initdraw() {
 	if(SDL_Init(SDL_INIT_VIDEO) < 0) {
 		std::cerr << "Could not initialize SDL: " << SDL_GetError() << "\n";
 		exit(1);
@@ -153,7 +153,6 @@ bool initdraw() {
 		std::cerr << "Could not create renderer: " << SDL_GetError() << "\n";
 		exit(1);
 	}
-	return true;
 }
 
 void simulate() {
