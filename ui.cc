@@ -125,7 +125,7 @@ void UI::draw(const Body& b) const {
 
 void UI::draw(const Body& b, const Vector& e) const {
 	auto spos = toPoint(b.p);
-	auto epos = toPoint(e);
+	auto epos = toPoint(e + b.p);
 	auto err = aalineRGBA(renderer_, spos.x, spos.y, epos.x, epos.y, b.r, b.g,
 	                      b.b, 0xff);
 	if(err == -1) {
@@ -150,7 +150,7 @@ void UI::init() {
 
 	renderer_ = SDL_CreateRenderer(screen_, -1, 0);
 	if(renderer_ == nullptr) {
-		std::cerr << "Could not create renderer_: " << SDL_GetError() << "\n";
+		std::cerr << "Could not create renderer: " << SDL_GetError() << "\n";
 		exit(1);
 	}
 }
