@@ -27,6 +27,16 @@ std::ostream& operator<<(std::ostream& os, const Quad& q) {
 	return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const Body& b) {
+	os << "Body{pos[" << b.p << "] vel[" << b.v << "]}";
+	return os;
+}
+
+Uint32 Body::getRandomColor() {
+	static RandCol randCol;
+	return randCol();
+}
+
 Point& Point::operator=(const Point& p) {
 	x = p.x;
 	y = p.y;

@@ -3,7 +3,7 @@ CXXFLAGS=-Wall -Wpedantic -Wextra -O0 -std=c++14 -g
 CXX=clang++
 CC=clang++
 
-nbody: nbody.o ui.o body.o bhtree.o
+nbody: nbody.o ui.o bhtree.o
 
 clean:
 	rm -f *.o nbody
