@@ -1,7 +1,9 @@
 #include "nbody.h"
 
-Galaxy glxy;
-UI ui;
+static Galaxy glxy;
+static UI ui;
+static constexpr double dt = 0.2;
+static double dt²;
 
 const std::vector<Uint32> RandCol::cols = {
     DWhite,         DRed,         DGreen,         DCyan,
@@ -96,19 +98,24 @@ void simulate() {
 	BHTree tree;
 	for(;;) {
 		glxy.mutex.lock();
-		std::cerr << "top of simulate loop\n";
 		ui.draw(glxy);
-		tree.insert(glxy);
+		tree.calcforces(glxy);
+		for(auto& b : glxy.bodies) {
+			b.p += b.v * dt + b.a * dt² / 2;
+			b.v += (b.a + b.newa) * dt / 2;
+			glxy.checkLimit(b.p);
+		}
 		glxy.mutex.unlock();
-		std::this_thread::sleep_for(std::chrono::microseconds{10});
+		std::this_thread::sleep_for(std::chrono::nanoseconds{1});
 	}
 }
 
 int main() {
+	dt² = dt * dt;
 	ui.init();
 	ui.draw(glxy);
 	std::thread simthread{simulate};
-	ui.loop();
+	ui.loop(glxy);
 	std::cerr << "Error: ui loop exited\n";
 	exit(1);
 }

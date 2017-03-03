@@ -1,18 +1,17 @@
 #include "nbody.h"
 #include <SDL2/SDL2_gfxPrimitives.h>
 
-void Mouse::operator()() {
-	std::lock_guard<std::mutex> lock{glxy.mutex};
+void Mouse::operator()(Galaxy& g) {
+	std::lock_guard<std::mutex> lock{g.mutex};
 	update();
 	switch(buttons_) {
 	case SDL_BUTTON_LMASK:
-		body();
+		body(g);
 		break;
 	case SDL_BUTTON_RMASK:
-		move();
+		move(g);
 		break;
 	}
-	std::cerr << "Mouse::operator(): leaving mouse\n";
 }
 
 void Mouse::update() {
@@ -22,38 +21,37 @@ void Mouse::update() {
 	buttons_ = SDL_GetMouseState(&p.x, &p.y);
 	vp = ui_.toVector(p);
 	SDL_FlushEvent(SDL_MOUSEBUTTONDOWN);
-	std::cerr << "Mouse::update: mouse is at " << p << " " << vp << "\n";
 }
 
-void Mouse::body() {
-	auto& b = glxy.newBody(ui_.scale_);
+void Mouse::body(Galaxy& g) {
+	auto& b = g.newBody(ui_.scale_);
 	b.p = vp;
 	for(;;) {
-		ui_.draw(glxy);
+		ui_.draw(g);
 		ui_.draw(b, b.v);
 		update();
 		if(!(buttons_ & SDL_BUTTON_LMASK))
 			break;
 		if(buttons_ == (SDL_BUTTON_LMASK | SDL_BUTTON_MMASK))
-			setSize(b);
+			setSize(b, g);
 		else if(buttons_ == (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
-			setVel(b);
+			setVel(b, g);
 		else
 			b.p = vp;
 	}
-	ui_.orig_ = ui_.toPoint(glxy.center());
-	glxy.checkLimit(b.p);
-	ui_.draw(glxy);
+	ui_.orig_ = ui_.toPoint(g.center());
+	g.checkLimit(b.p);
+	ui_.draw(g);
 }
 
-void Mouse::setSize(Body& b) {
+void Mouse::setSize(Body& b, const Galaxy& g) {
 	auto oldp = p;
 	for(;;) {
 		auto d = vp - b.p;
 		auto h = std::hypot(d.x, d.y);
-		b.size = h == 0 ? 1.0 / ui_.scale_ : h;
+		b.size = h == 0 ? 2.0 * ui_.scale_ : h;
 		b.mass = b.size * b.size * b.size;
-		ui_.draw(glxy);
+		ui_.draw(g);
 		ui_.draw(b, b.v);
 		update();
 		if(buttons_ != (SDL_BUTTON_LMASK | SDL_BUTTON_MMASK))
@@ -62,11 +60,11 @@ void Mouse::setSize(Body& b) {
 	SDL_WarpMouseInWindow(nullptr, oldp.x, oldp.y);
 }
 
-void Mouse::setVel(Body& b) {
+void Mouse::setVel(Body& b, const Galaxy& g) {
 	auto oldp = p;
 	for(;;) {
-		b.v = vp - b.p;
-		ui_.draw(glxy);
+		b.v = (vp - b.p) / 10;
+		ui_.draw(g);
 		ui_.draw(b, b.v);
 		update();
 		if(buttons_ != (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
@@ -75,32 +73,32 @@ void Mouse::setVel(Body& b) {
 	SDL_WarpMouseInWindow(nullptr, oldp.x, oldp.y);
 }
 
-void Mouse::move() {
+void Mouse::move(const Galaxy& g) {
 	auto oldp = p;
 	for(;;) {
 		update();
 		ui_.orig_ += p - oldp;
 		oldp = p;
-		ui_.draw(glxy);
+		ui_.draw(g);
 		if(buttons_ != SDL_BUTTON_RMASK)
 			break;
 	}
 }
 
 Vector UI::toVector(const Point& p) const {
-	return {static_cast<double>(p.x - orig_.x) / scale_,
-	        static_cast<double>(p.y - orig_.y) / scale_};
+	return {static_cast<double>(p.x - orig_.x) * scale_,
+	        static_cast<double>(p.y - orig_.y) * scale_};
 }
 
 Point UI::toPoint(const Vector& v) const {
-	return {static_cast<int>(v.x * scale_) + orig_.x,
-	        static_cast<int>(v.y * scale_) + orig_.y};
+	return {static_cast<int>(v.x / scale_) + orig_.x,
+	        static_cast<int>(v.y / scale_) + orig_.y};
 }
 
-void UI::draw(const Galaxy& glxy) const {
+void UI::draw(const Galaxy& g) const {
 	SDL_SetRenderDrawColor(renderer_, 0, 0, 0, 255);
 	SDL_RenderClear(renderer_);
-	for(auto& b : glxy.bodies) {
+	for(auto& b : g.bodies) {
 		draw(b);
 		if(showv)
 			draw(b, b.v);
@@ -112,7 +110,7 @@ void UI::draw(const Galaxy& glxy) const {
 
 void UI::draw(const Body& b) const {
 	auto pos = toPoint(b.p);
-	auto drawSize = static_cast<int>(b.size * scale_);
+	auto drawSize = static_cast<int>(b.size / scale_);
 	auto err1 =
 	    aacircleRGBA(renderer_, pos.x, pos.y, drawSize, b.r, b.g, b.b, 0xff);
 	auto err2 = filledCircleRGBA(renderer_, pos.x, pos.y, drawSize, b.r, b.g,
@@ -125,7 +123,7 @@ void UI::draw(const Body& b) const {
 
 void UI::draw(const Body& b, const Vector& e) const {
 	auto spos = toPoint(b.p);
-	auto epos = toPoint(e + b.p);
+	auto epos = toPoint(e * 10 + b.p);
 	auto err = aalineRGBA(renderer_, spos.x, spos.y, epos.x, epos.y, b.r, b.g,
 	                      b.b, 0xff);
 	if(err == -1) {
@@ -155,7 +153,7 @@ void UI::init() {
 	}
 }
 
-void UI::loop() {
+void UI::loop(Galaxy& g) {
 	for(;;) {
 		SDL_Event e;
 		while(SDL_PollEvent(&e) != 0) {
@@ -170,13 +168,12 @@ void UI::loop() {
 				break;
 
 			case SDL_WINDOWEVENT:
-				if(e.window.event == SDL_WINDOWEVENT_RESIZED) {
+				if(e.window.event == SDL_WINDOWEVENT_RESIZED)
 					SDL_SetWindowSize(screen_, e.window.data1, e.window.data2);
-				}
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
-				mouse_();
+				mouse_(g);
 				break;
 			}
 		}

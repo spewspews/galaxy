@@ -1,7 +1,6 @@
 #include "nbody.h"
 
 Quad* BHTree::getQuad(const Body& b) {
-	std::cerr << "BHTree::getQuad: i_ size_ " << i_ << " " << size_ << "\n";
 	if(i_ == size_) {
 		return nullptr;
 	}
@@ -11,9 +10,43 @@ Quad* BHTree::getQuad(const Body& b) {
 	return &q;
 }
 
+void BHTree::calcforces(Body& b, QB qb, double size) {
+	Vector d, foverm;
+	double h, Goverh³;
+
+	for(;;)
+		switch(qb.t) {
+		case QB::empty:
+			return;
+		case QB::body:
+			if(qb.b == &b)
+				return;
+			d = qb.b->p - b.p;
+			h = std::hypot(std::hypot(d.x, d.y), ε_);
+			Goverh³ = G_ / (h * h * h);
+			foverm = d * Goverh³;
+			b.newa += foverm * qb.b->mass;
+			return;
+		case QB::quad:
+			d = qb.q->p - b.p;
+			h = std::hypot(d.x, d.y);
+			if(h != 0.0 && size / h < θ_) {
+				h = std::hypot(h, ε_);
+				Goverh³ = G_ / (h * h * h);
+				foverm = d * Goverh³;
+				b.newa += foverm * qb.q->mass;
+				return;
+			}
+			size /= 2;
+			calcforces(b, qb.q->c[0], size);
+			calcforces(b, qb.q->c[1], size);
+			calcforces(b, qb.q->c[2], size);
+			qb = qb.q->c[3];
+			break; /* calcforces(b, q->q[3], size); */
+		}
+}
+
 bool BHTree::insert(const Body& nb, double size) {
-	std::cerr << "BHTree::insert entering with &nb nb " << &nb << " " << nb
-	          << "\n";
 	if(root_.t == QB::empty) {
 		root_.t = QB::body;
 		root_.b = &nb;
@@ -22,13 +55,10 @@ bool BHTree::insert(const Body& nb, double size) {
 	double qx{0}, qy{0};
 	auto qb = &root_;
 	for(;;) {
-		std::cerr << "BHTree::insert qx qy " << qx << " " << qy << "\n";
 		if(qb->t == QB::body) {
 			auto& b = *qb->b;
 			auto qxy = b.p.x < qx ? 0 : 1;
 			qxy |= b.p.y < qy ? 0 : 2;
-			std::cerr << "BHTree::insert found body b qxy " << b << " " << qxy
-			          << "\n";
 			qb->t = QB::quad;
 			qb->q = getQuad(b);
 			if(qb->q == nullptr)
@@ -43,7 +73,6 @@ bool BHTree::insert(const Body& nb, double size) {
 
 		auto qxy = nb.p.x < qx ? 0 : 1;
 		qxy |= nb.p.y < qy ? 0 : 1;
-		std::cerr << "BHTree::insert qxy " << qxy << "\n";
 		if(q.c[qxy].t == QB::empty) {
 			q.c[qxy].t = QB::body;
 			q.c[qxy].b = &nb;
@@ -58,15 +87,21 @@ bool BHTree::insert(const Body& nb, double size) {
 
 void BHTree::insert(Galaxy& g) {
 Again:
-	std::cerr << "BHTree::insert(Galaxy&): g.bodies.size() " << g.bodies.size()
-	          << "\n";
 	root_.t = QB::empty;
 	i_ = 0;
 	for(auto& b : g.bodies) {
 		if(!insert(b, g.limit)) {
-			std::cerr << "BHTree::insert(Galaxy&):  need to resize\n";
 			resize();
 			goto Again;
 		}
+	}
+}
+
+void BHTree::calcforces(Galaxy& g) {
+	insert(g);
+	for(auto& b : g.bodies) {
+		b.a = b.newa;
+		b.newa = {0, 0};
+		calcforces(b, root_, g.limit);
 	}
 }

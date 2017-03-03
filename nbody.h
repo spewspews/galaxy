@@ -139,7 +139,7 @@ class Galaxy {
 	Galaxy() : limit{10} {};
 
 	Body& newBody(double scale) {
-		bodies.push_back({defaultSize_ / scale});
+		bodies.push_back({defaultSize_ * scale});
 		return bodies.back();
 	}
 	void checkLimit(const Vector&);
@@ -150,16 +150,20 @@ class BHTree {
 	std::vector<Quad> quads_;
 	QB root_;
 	size_t i_, size_;
-	bool insert(const Body&, double);
-	Quad* getQuad(const Body&);
+	double ε_, G_, θ_;
 
-  public:
-	BHTree() : quads_{5}, size_{quads_.size()} {};
+	bool insert(const Body&, double);
 	void insert(Galaxy&);
+	Quad* getQuad(const Body&);
+	void calcforces(Body&, QB, double);
 	void resize() {
 		size_ *= 2;
 		quads_.resize(size_);
 	}
+
+  public:
+	BHTree() : quads_{5}, size_{quads_.size()}, ε_{500}, G_{1}, θ_{1} {};
+	void calcforces(Galaxy&);
 };
 
 class UI;
@@ -168,17 +172,17 @@ class Mouse {
 	Uint32 buttons_;
 	UI& ui_;
 
-	void body();
-	void move();
-	void setSize(Body&);
-	void setVel(Body&);
+	void body(Galaxy&);
+	void move(const Galaxy&);
+	void setSize(Body&, const Galaxy&);
+	void setVel(Body&, const Galaxy&);
 
   public:
 	Mouse(UI& ui) : ui_{ui} {}
 	Point p;
 	Vector vp;
 
-	void operator()();
+	void operator()(Galaxy&);
 	void update();
 };
 
@@ -201,8 +205,5 @@ class UI {
 	void draw(const Body&, const Vector&) const;
 	double defaultSize();
 	void init();
-	void loop();
+	void loop(Galaxy& g);
 };
-
-extern Galaxy glxy;
-extern UI ui;
