@@ -50,13 +50,18 @@ class Vector {
 	Vector(double a, double b) : x{a}, y{b} {};
 
 	Vector& operator=(const Vector& v);
-	Vector operator-(const Vector& v) const { return {x - v.x, y - v.y}; }
+
 	Vector operator+(const Vector& v) const { return {x + v.x, y + v.y}; };
-	Vector operator*(double m) const { return {x * m, y * m}; }
-	Vector operator/(double m) const { return {x / m, y / m}; }
+	Vector operator-(const Vector& v) const { return {x - v.x, y - v.y}; }
+
 	Vector& operator+=(const Vector& v);
 	Vector& operator-=(const Vector& v);
+
+	Vector operator*(double m) const { return {x * m, y * m}; }
+	Vector operator/(double m) const { return {x / m, y / m}; }
+
 	Vector& operator/=(double);
+
 	friend std::ostream& operator<<(std::ostream&, const Vector&);
 };
 
@@ -69,16 +74,18 @@ class Point {
 	Point(int a, int b) : x{a}, y{b} {}
 
 	Point& operator=(const Point&);
-	Point& operator/=(int);
-	Point& operator+=(const Point&);
+
 	Point operator+(const Point& p) const { return {x + p.x, y + p.y}; }
 	Point operator-(const Point& p) const { return {x - p.x, y - p.y}; }
+
+	Point& operator+=(const Point&);
+
+	Point& operator/=(int);
+
 	friend std::ostream& operator<<(std::ostream&, const Point&);
 };
 
 class Body {
-	Uint32 color_;
-
 	static Uint32 getRandomColor();
 
   public:
@@ -86,16 +93,12 @@ class Body {
 	double size, mass;
 	Uint8 r, g, b;
 
-	Body(double scale)
-	    : color_{getRandomColor()}, p{}, v{}, a{}, newa{}, size{2.0 / scale},
-	      mass{scale * scale * scale},
-	      r{static_cast<Uint8>(color_ >> 3 & 0xff)},
-	      g{static_cast<Uint8>(color_ >> 2 & 0xff)},
-	      b{static_cast<Uint8>(color_ >> 1 & 0xff)} {}
-
-	void draw() const;
-	void drawVel() const;
-	void drawAcc() const;
+	Body(double s) : p{}, v{}, a{}, newa{}, size{s}, mass{s * s * s} {
+		auto color = getRandomColor();
+		r = static_cast<Uint8>(color >> 3 & 0xff);
+		g = static_cast<Uint8>(color >> 2 & 0xff);
+		b = static_cast<Uint8>(color >> 1 & 0xff);
+	}
 	friend std::ostream& operator<<(std::ostream&, const Body&);
 };
 
@@ -126,26 +129,21 @@ class Quad {
 };
 
 class Galaxy {
+	static constexpr double defaultSize_ = 2.0;
+
   public:
 	double limit;
-	Point orig;
-	double scale;
 	std::vector<Body> bodies;
 	std::mutex mutex;
 
-	Galaxy() : limit{10}, orig{0, 0}, scale{10} {};
+	Galaxy() : limit{10} {};
 
-	Body& newBody() {
-		bodies.push_back({scale});
+	Body& newBody(double scale) {
+		bodies.push_back({defaultSize_ / scale});
 		return bodies.back();
 	}
 	void checkLimit(const Vector&);
-	void draw() const;
-	Point center();
-	void toVector(Vector&, const Point&) const;
-	void toPoint(Point&, const Vector&) const;
-	Vector toVector(const Point&) const;
-	Point toPoint(const Vector&) const;
+	Vector center();
 };
 
 class BHTree {
@@ -164,8 +162,11 @@ class BHTree {
 	}
 };
 
+class UI;
+
 class Mouse {
 	Uint32 buttons_;
+	UI& ui_;
 
 	void body();
 	void move();
@@ -173,16 +174,35 @@ class Mouse {
 	void setVel(Body&);
 
   public:
+	Mouse(UI& ui) : ui_{ui} {}
 	Point p;
 	Vector vp;
 
 	void operator()();
 	void update();
-	void updatePos(Sint32, Sint32);
 };
 
-extern SDL_Window* screen;
-extern SDL_Renderer* renderer;
-extern Mouse mouse;
-extern bool showv, showa;
+class UI {
+	friend class Mouse;
+	Mouse mouse_;
+	Point orig_;
+	double scale_;
+	SDL_Window* screen_;
+	SDL_Renderer* renderer_;
+
+	Point toPoint(const Vector&) const;
+	Vector toVector(const Point&) const;
+
+  public:
+	bool showv, showa;
+	UI() : mouse_{*this}, orig_{0, 0}, scale_{10}, showv{false}, showa{false} {}
+	void draw(const Galaxy&) const;
+	void draw(const Body&) const;
+	void draw(const Body&, const Vector&) const;
+	double defaultSize();
+	void init();
+	void loop();
+};
+
 extern Galaxy glxy;
+extern UI ui;
