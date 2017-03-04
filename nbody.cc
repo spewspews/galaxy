@@ -5,36 +5,14 @@ static UI ui;
 static constexpr double dt = 0.2;
 static double dt²;
 
-const std::vector<Uint32> RandCol::cols = {
-    DWhite,         DRed,         DGreen,         DCyan,
-    DMagenta,       DYellow,      DPaleyellow,    DDarkyellow,
-    DDarkgreen,     DPalegreen,   DPalebluegreen, DPaleblue,
-    DPalegreygreen, DYellowgreen, DGreyblue,      DPalegreyblue,
-};
-
 std::ostream& operator<<(std::ostream& os, const Point& p) {
 	os << "Point{" << p.x << ", " << p.y << "}";
-	return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const Vector& v) {
-	os << "Vector{" << v.x << ", " << v.y << "}";
 	return os;
 }
 
 std::ostream& operator<<(std::ostream& os, const Quad& q) {
 	os << "Quad{p[" << q.p << "]}";
 	return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const Body& b) {
-	os << "Body{pos[" << b.p << "] vel[" << b.v << "]}";
-	return os;
-}
-
-Uint32 Body::getRandomColor() {
-	static RandCol randCol;
-	return randCol();
 }
 
 Point& Point::operator=(const Point& p) {
@@ -53,55 +31,6 @@ Point& Point::operator+=(const Point& p) {
 	x += p.x;
 	y += p.y;
 	return *this;
-}
-
-Vector& Vector::operator=(const Vector& p) {
-	x = p.x;
-	y = p.y;
-	return *this;
-}
-
-Vector& Vector::operator+=(const Vector& p) {
-	x += p.x;
-	y += p.y;
-	return *this;
-}
-
-Vector& Vector::operator-=(const Vector& p) {
-	x -= p.x;
-	y -= p.y;
-	return *this;
-}
-Vector& Vector::operator/=(double f) {
-	x /= f;
-	y /= f;
-	return *this;
-}
-
-void Galaxy::checkLimit(const Vector& v) {
-	auto f = fabs(v.x);
-	if(f > limit / 2)
-		limit = f * 2;
-	f = fabs(v.y);
-	if(f > limit / 2)
-		limit = f * 2;
-}
-
-Vector Galaxy::center() {
-	Vector gc, gcv;
-	double mass = 0;
-	for(auto& b : glxy.bodies) {
-		gc += b.p * b.mass;
-		gcv += b.v * b.mass;
-		mass += b.mass;
-	}
-	gc /= mass;
-	gcv /= mass;
-	for(auto& b : glxy.bodies) {
-		b.p -= gc;
-		b.v -= gcv;
-	}
-	return gc;
 }
 
 void simulate() {
