@@ -30,9 +30,8 @@ void mkbodies() {
 	for(auto x = -gs / 2; x < gs / 2; x += d)
 		for(auto y = -gs / 2; y < gs / 2; y += d) {
 			Vector p{x + randGen(-drand, drand), y + randGen(-drand, drand)};
-			if(c)
-				if(std::hypot(p.x, p.y) > gs / 2)
-					continue;
+			if(c && std::hypot(p.x, p.y) > gs / 2)
+				continue;
 			auto& b = glxy.newBody();
 			b.p = p;
 			b.v = Vector::polar(randGen(0, M_PI2), v + randGen(-vrand, vrand));
