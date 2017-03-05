@@ -1,10 +1,5 @@
 #include "nbody.h"
 
-static Galaxy glxy;
-static UI ui;
-static constexpr double dt = 0.2;
-static double dt²;
-
 std::ostream& operator<<(std::ostream& os, const Point& p) {
 	os << "Point{" << p.x << ", " << p.y << "}";
 	return os;
@@ -33,28 +28,50 @@ Point& Point::operator+=(const Point& p) {
 	return *this;
 }
 
-void simulate() {
+void Simulator::pause() {
+	pause_ = true;
+	std::unique_lock<std::mutex> lk(mupd_);
+	while(!paused_)
+		cvpd_.wait(lk);
+}
+
+void Simulator::unpause() {
+	pause_ = false;
+	cvp_.notify_one();
+}
+
+void Simulator::simloop(Galaxy& g, UI& ui) {
 	BHTree tree;
 	for(;;) {
-		glxy.mutex.lock();
-		ui.draw(glxy);
-		tree.calcforces(glxy);
-		for(auto& b : glxy.bodies) {
+		if(pause_) {
+			paused_ = true;
+			cvpd_.notify_one();
+			std::unique_lock<std::mutex> lk(mup_);
+			while(pause_)
+				cvp_.wait(lk);
+			paused_ = false;
+		}
+		ui.draw(g);
+		tree.calcforces(g);
+		for(auto& b : g.bodies) {
 			b.p += b.v * dt + b.a * dt² / 2;
 			b.v += (b.a + b.newa) * dt / 2;
-			glxy.checkLimit(b.p);
+			g.checkLimit(b.p);
 		}
-		glxy.mutex.unlock();
-		std::this_thread::sleep_for(std::chrono::nanoseconds{1});
 	}
 }
 
+void Simulator::simulate(Galaxy& g, UI& ui) {
+	t_ = std::thread{[this, &g, &ui]() { simloop(g, ui); }};
+}
+
 int main() {
-	dt² = dt * dt;
-	ui.init();
-	ui.draw(glxy);
-	std::thread simthread{simulate};
-	ui.loop(glxy);
+	Galaxy glxy;
+	Simulator sim;
+	UI ui;
+
+	sim.simulate(glxy, ui);
+	ui.loop(glxy, sim);
 	std::cerr << "Error: ui loop exited\n";
 	exit(1);
 }

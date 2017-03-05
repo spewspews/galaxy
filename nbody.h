@@ -1,7 +1,9 @@
 #include "galaxy.h"
 #include <SDL2/SDL.h>
 #include <array>
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <random>
 #include <thread>
 
@@ -73,6 +75,22 @@ class BHTree {
 
 class UI;
 
+class Simulator {
+	std::atomic_bool pause_, paused_;
+	std::condition_variable cvp_, cvpd_;
+	std::mutex mup_, mupd_;
+	std::thread t_;
+	void simloop(Galaxy& g, UI& ui);
+
+  public:
+	double dt, dt²;
+	Simulator() : dt{0.2}, dt²{dt * dt} {};
+
+	void simulate(Galaxy& g, UI& ui);
+	void pause();
+	void unpause();
+};
+
 class Mouse {
 	Uint32 buttons_;
 	UI& ui_;
@@ -87,7 +105,7 @@ class Mouse {
 	Point p;
 	Vector vp;
 
-	void operator()(Galaxy&);
+	void operator()(Galaxy&, Simulator&);
 	void update();
 };
 
@@ -101,14 +119,18 @@ class UI {
 
 	Point toPoint(const Vector&) const;
 	Vector toVector(const Point&) const;
+	void init();
 
   public:
 	bool showv, showa;
-	UI() : mouse_{*this}, orig_{0, 0}, scale_{10}, showv{false}, showa{false} {}
+	UI() : mouse_{*this}, orig_{0, 0}, scale_{10}, showv{false}, showa{false} {
+		init();
+	}
 	void draw(const Galaxy&) const;
 	void draw(const Body&) const;
 	void draw(const Body&, const Vector&) const;
 	double defaultSize();
-	void init();
-	void loop(Galaxy& g);
+	void loop(Galaxy&, Simulator&);
 };
+
+extern bool paused;

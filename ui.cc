@@ -1,8 +1,8 @@
 #include "nbody.h"
 #include <SDL2/SDL2_gfxPrimitives.h>
 
-void Mouse::operator()(Galaxy& g) {
-	std::lock_guard<std::mutex> lock{g.mutex};
+void Mouse::operator()(Galaxy& g, Simulator& s) {
+	s.pause();
 	update();
 	switch(buttons_) {
 	case SDL_BUTTON_LMASK:
@@ -12,6 +12,7 @@ void Mouse::operator()(Galaxy& g) {
 		move(g);
 		break;
 	}
+	s.unpause();
 }
 
 void Mouse::update() {
@@ -153,7 +154,7 @@ void UI::init() {
 	}
 }
 
-void UI::loop(Galaxy& g) {
+void UI::loop(Galaxy& g, Simulator& s) {
 	for(;;) {
 		SDL_Event e;
 		while(SDL_PollEvent(&e) != 0) {
@@ -173,7 +174,7 @@ void UI::loop(Galaxy& g) {
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
-				mouse_(g);
+				mouse_(g, s);
 				break;
 			}
 		}

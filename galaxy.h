@@ -65,7 +65,6 @@ class Galaxy {
   public:
 	double limit;
 	std::vector<Body> bodies;
-	std::mutex mutex;
 
 	Galaxy() : limit{10} {};
 
