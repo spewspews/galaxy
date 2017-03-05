@@ -11,10 +11,9 @@ Quad* BHTree::getQuad(const Body& b) {
 }
 
 void BHTree::calcforces(Body& b, QB qb, double size) {
-	Vector d, foverm;
-	double h, Goverh³;
-
-	for(;;)
+	for(;;) {
+		Vector d;
+		double h;
 		switch(qb.t) {
 		case QB::empty:
 			return;
@@ -23,18 +22,14 @@ void BHTree::calcforces(Body& b, QB qb, double size) {
 				return;
 			d = qb.b->p - b.p;
 			h = std::hypot(std::hypot(d.x, d.y), ε_);
-			Goverh³ = G_ / (h * h * h);
-			foverm = d * Goverh³;
-			b.newa += foverm * qb.b->mass;
+			b.newa += d * G_ / (h * h * h) * qb.b->mass;
 			return;
 		case QB::quad:
 			d = qb.q->p - b.p;
 			h = std::hypot(d.x, d.y);
 			if(h != 0.0 && size / h < θ_) {
 				h = std::hypot(h, ε_);
-				Goverh³ = G_ / (h * h * h);
-				foverm = d * Goverh³;
-				b.newa += foverm * qb.q->mass;
+				b.newa += d * G_ / (h * h * h) * qb.q->mass;
 				return;
 			}
 			size /= 2;
@@ -44,6 +39,7 @@ void BHTree::calcforces(Body& b, QB qb, double size) {
 			qb = qb.q->c[3];
 			break; /* calcforces(b, q->q[3], size); */
 		}
+	}
 }
 
 bool BHTree::insert(const Body& nb, double size) {
