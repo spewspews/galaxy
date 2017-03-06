@@ -88,7 +88,7 @@ class Simulator {
 
   public:
 	double dt, dt²;
-	Simulator() : pause_{false}, paused_{false}, dt{0.2}, dt²{dt * dt} {};
+	Simulator() : pause_{false}, paused_{false}, dt{0.1}, dt²{dt * dt} {};
 
 	void simulate(Galaxy& g, UI& ui);
 	void pause();
