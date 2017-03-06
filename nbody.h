@@ -21,6 +21,7 @@ class Point {
 	Point operator-(const Point& p) const { return {x - p.x, y - p.y}; }
 
 	Point& operator+=(const Point&);
+	Point& operator-=(const Point&);
 
 	Point& operator/=(int);
 
@@ -65,6 +66,10 @@ class BHTree {
 	void calcforces(Body&, QB, double);
 	void resize() {
 		size_ *= 2;
+		if(size_ > 10000) {
+			std::cerr << "Too many quads\n";
+			exit(1);
+		}
 		quads_.resize(size_);
 	}
 
@@ -112,20 +117,20 @@ class Mouse {
 class UI {
 	friend class Mouse;
 	Mouse mouse_;
-	Point orig_;
 	double scale_;
 	SDL_Window* screen_;
 	SDL_Renderer* renderer_;
+	Point orig_;
 
-	Point toPoint(const Vector&) const;
 	Vector toVector(const Point&) const;
+	Point toPoint(const Vector&) const;
 	void init();
 
   public:
 	bool showv, showa;
-	UI() : mouse_{*this}, orig_{0, 0}, scale_{10}, showv{false}, showa{false} {
-		init();
-	}
+
+	UI() : mouse_{*this}, scale_{30}, showv{false}, showa{false} { init(); }
+
 	void draw(const Galaxy&) const;
 	void draw(const Body&) const;
 	void draw(const Body&, const Vector&) const;

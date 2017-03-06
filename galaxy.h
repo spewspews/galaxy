@@ -40,6 +40,7 @@ class Vector {
 	Vector& operator/=(double);
 
 	friend std::ostream& operator<<(std::ostream&, const Vector&);
+	friend std::istream& operator<<(std::istream&, Vector&);
 };
 
 class Body {
@@ -56,7 +57,18 @@ class Body {
 		g = static_cast<uint8_t>(color >> 2 & 0xff);
 		b = static_cast<uint8_t>(color >> 1 & 0xff);
 	}
+
+	Body& operator=(const Body& b) {
+		p = b.p;
+		v = b.v;
+		a = b.a;
+		newa = b.newa;
+		size = b.size;
+		mass = b.mass;
+		return *this;
+	}
 	friend std::ostream& operator<<(std::ostream&, const Body&);
+	friend std::istream& operator>>(std::istream&, Body&);
 };
 
 class Galaxy {

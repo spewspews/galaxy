@@ -68,7 +68,7 @@ bool BHTree::insert(const Body& nb, double size) {
 		q.mass = mass;
 
 		auto qxy = nb.p.x < qx ? 0 : 1;
-		qxy |= nb.p.y < qy ? 0 : 1;
+		qxy |= nb.p.y < qy ? 0 : 2;
 		if(q.c[qxy].t == QB::empty) {
 			q.c[qxy].t = QB::body;
 			q.c[qxy].b = &nb;

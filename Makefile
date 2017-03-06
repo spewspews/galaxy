@@ -8,7 +8,6 @@ all: nbody mkgalaxy
 nbody: nbody.o ui.o bhtree.o galaxy.o
 
 mkgalaxy: mkgalaxy.o galaxy.o
-	$(CC) $(LDFLAGS) $^ -o $@
 
 clean:
 	rm -f *.o nbody mkgalaxy

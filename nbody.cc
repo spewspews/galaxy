@@ -1,4 +1,5 @@
 #include "nbody.h"
+#include "flags.h"
 
 std::ostream& operator<<(std::ostream& os, const Point& p) {
 	os << "Point{" << p.x << ", " << p.y << "}";
@@ -25,6 +26,12 @@ Point& Point::operator/=(int s) {
 Point& Point::operator+=(const Point& p) {
 	x += p.x;
 	y += p.y;
+	return *this;
+}
+
+Point& Point::operator-=(const Point& p) {
+	x -= p.x;
+	y -= p.y;
 	return *this;
 }
 
@@ -65,11 +72,38 @@ void Simulator::simulate(Galaxy& g, UI& ui) {
 	t_ = std::thread{[this, &g, &ui]() { simloop(g, ui); }};
 }
 
-int main() {
+void readglxy(Galaxy& g, std::istream& is) {
+	auto i = 0;
+	for(;;) {
+		Body b{0.0};
+		is >> b;
+		if(is.fail()) {
+			if(is.eof()) {
+				is.clear();
+				break;
+			}
+			std::cerr << "Body read failed\n";
+			is.clear();
+			continue;
+		}
+		i++;
+		g.newBody() = b;
+		g.checkLimit(b.p);
+	}
+}
+
+int main(int argc, char** argv) {
 	Galaxy glxy;
 	Simulator sim;
 	UI ui;
 
+	const flags::args args(argc, argv);
+
+	auto read = args.get<bool>("i", false);
+	if(read) {
+		readglxy(glxy, std::cin);
+		glxy.center();
+	}
 	sim.simulate(glxy, ui);
 	ui.loop(glxy, sim);
 	std::cerr << "Error: ui loop exited\n";

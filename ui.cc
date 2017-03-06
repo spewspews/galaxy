@@ -140,8 +140,7 @@ void UI::init() {
 	}
 
 	screen_ = SDL_CreateWindow("Galaxy", SDL_WINDOWPOS_UNDEFINED,
-	                           SDL_WINDOWPOS_UNDEFINED, 640, 640,
-	                           SDL_WINDOW_RESIZABLE);
+	                           SDL_WINDOWPOS_UNDEFINED, 640, 640, 0);
 	if(screen_ == nullptr) {
 		std::cerr << "Could not create window: " << SDL_GetError() << "\n";
 		exit(1);
@@ -152,6 +151,9 @@ void UI::init() {
 		std::cerr << "Could not create renderer: " << SDL_GetError() << "\n";
 		exit(1);
 	}
+	SDL_GetWindowSize(screen_, &orig_.x, &orig_.y);
+	//	SDL_GetRendererOutputSize(renderer_, &orig_.x, &orig_.y);
+	orig_ /= 2;
 }
 
 void UI::loop(Galaxy& g, Simulator& s) {
@@ -169,8 +171,11 @@ void UI::loop(Galaxy& g, Simulator& s) {
 				break;
 
 			case SDL_WINDOWEVENT:
-				if(e.window.event == SDL_WINDOWEVENT_RESIZED)
+				if(e.window.event == SDL_WINDOWEVENT_RESIZED) {
+					s.pause();
 					SDL_SetWindowSize(screen_, e.window.data1, e.window.data2);
+					s.unpause();
+				}
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:

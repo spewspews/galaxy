@@ -4,7 +4,6 @@ static constexpr uint32_t DWhite = 0xFFFFFFFF, DRed = 0xFF0000FF,
                           DGreen = 0x00FF00FF, DBlue = 0x0000FFFF,
                           DCyan = 0x00FFFFFF, DMagenta = 0xFF00FFFF,
                           DYellow = 0xFFFF00FF, DPaleyellow = 0xFFFFAAFF,
-                          DDarkyellow = 0xEEEE9EFF, DDarkgreen = 0x448844FF,
                           DPalegreen = 0xAAFFAAFF, DMedgreen = 0x88CC88FF,
                           DPalebluegreen = 0xAAFFFFFF, DPaleblue = 0x0000BBFF,
                           DBluegreen = 0x008888FF, DGreygreen = 0x55AAAAFF,
@@ -13,14 +12,36 @@ static constexpr uint32_t DWhite = 0xFFFFFFFF, DRed = 0xFF0000FF,
                           DPalegreyblue = 0x4993DDFF;
 
 const std::vector<uint32_t> RandCol::cols = {
-    DWhite,         DRed,        DGreen,         DCyan,        DMagenta,
-    DYellow,        DPaleyellow, DDarkyellow,    DDarkgreen,   DPalegreen,
-    DPalebluegreen, DPaleblue,   DPalegreygreen, DYellowgreen, DGreyblue,
-    DPalegreyblue,  DBlue,       DBluegreen,     DGreygreen,   DMedgreen};
+    DWhite,         DRed,         DGreen,     DCyan,          DMagenta,
+    DYellow,        DPaleyellow,  DPalegreen, DPalebluegreen, DPaleblue,
+    DPalegreygreen, DYellowgreen, DGreyblue,  DPalegreyblue,  DBlue,
+    DBluegreen,     DGreygreen,   DMedgreen};
 
 std::ostream& operator<<(std::ostream& os, const Vector& v) {
 	os << "{" << v.x << "," << v.y << "}";
 	return os;
+}
+
+std::istream& operator>>(std::istream& is, Vector& v) {
+	char c;
+	is >> c;
+	if(c != '{') {
+		is.setstate(std::ios::failbit);
+		return is;
+	}
+
+	is >> v.x;
+	is >> c;
+	if(c != ',') {
+		is.setstate(std::ios::failbit);
+		return is;
+	}
+
+	is >> v.y;
+	is >> c;
+	if(c != '}')
+		is.setstate(std::ios::failbit);
+	return is;
 }
 
 uint32_t Body::getRandomColor() {
@@ -31,6 +52,18 @@ uint32_t Body::getRandomColor() {
 std::ostream& operator<<(std::ostream& os, const Body& b) {
 	os << "BODY " << b.p << " " << b.v << " " << b.size << "\n";
 	return os;
+}
+
+std::istream& operator>>(std::istream& is, Body& b) {
+	std::string body;
+	is >> body;
+	if(body != "BODY") {
+		is.setstate(std::ios::failbit);
+		return is;
+	}
+	is >> b.p >> b.v >> b.size;
+	b.mass = b.size * b.size * b.size;
+	return is;
 }
 
 Vector& Vector::operator=(const Vector& p) {
@@ -79,5 +112,6 @@ Vector Galaxy::center() {
 		b.p -= gc;
 		b.v -= gcv;
 	}
+
 	return gc;
 }
