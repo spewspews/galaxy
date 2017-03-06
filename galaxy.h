@@ -81,7 +81,7 @@ class Galaxy {
 	Galaxy() : limit{10} {};
 
 	Body& newBody(double scale) {
-		bodies.push_back({defaultSize_ * scale});
+		bodies.push_back(Body{defaultSize_ * scale});
 		return bodies.back();
 	}
 	Body& newBody() { return newBody(0); }

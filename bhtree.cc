@@ -97,7 +97,7 @@ void BHTree::calcforces(Galaxy& g) {
 	insert(g);
 	for(auto& b : g.bodies) {
 		b.a = b.newa;
-		b.newa = {0, 0};
+		b.newa = Vector{0, 0};
 		calcforces(b, root_, g.limit);
 	}
 }

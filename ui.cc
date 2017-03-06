@@ -87,13 +87,13 @@ void Mouse::move(const Galaxy& g) {
 }
 
 Vector UI::toVector(const Point& p) const {
-	return {static_cast<double>(p.x - orig_.x) * scale_,
-	        static_cast<double>(p.y - orig_.y) * scale_};
+	return Vector{static_cast<double>(p.x - orig_.x) * scale_,
+	              static_cast<double>(p.y - orig_.y) * scale_};
 }
 
 Point UI::toPoint(const Vector& v) const {
-	return {static_cast<int>(v.x / scale_) + orig_.x,
-	        static_cast<int>(v.y / scale_) + orig_.y};
+	return Point{static_cast<int>(v.x / scale_) + orig_.x,
+	             static_cast<int>(v.y / scale_) + orig_.y};
 }
 
 void UI::draw(const Galaxy& g) const {
