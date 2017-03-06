@@ -47,7 +47,7 @@ void Simulator::unpause() {
 	cvp_.notify_one();
 }
 
-void Simulator::simloop(Galaxy& g, UI& ui) {
+void Simulator::simLoop(Galaxy& g, UI& ui) {
 	BHTree tree;
 	for(;;) {
 		if(pause_) {
@@ -69,7 +69,7 @@ void Simulator::simloop(Galaxy& g, UI& ui) {
 }
 
 void Simulator::simulate(Galaxy& g, UI& ui) {
-	t_ = std::thread{[this, &g, &ui]() { simloop(g, ui); }};
+	t_ = std::thread{[this, &g, &ui] { simLoop(g, ui); }};
 }
 
 void readglxy(Galaxy& g, std::istream& is) {

@@ -84,7 +84,7 @@ class Simulator {
 	std::condition_variable cvp_, cvpd_;
 	std::mutex mup_, mupd_;
 	std::thread t_;
-	void simloop(Galaxy& g, UI& ui);
+	void simLoop(Galaxy& g, UI& ui);
 
   public:
 	double dt, dt²;
