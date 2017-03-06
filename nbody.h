@@ -50,7 +50,6 @@ class Quad {
 		p = b.p;
 		mass = b.mass;
 	}
-	void clearChild() { c.fill({}); }
 	friend std::ostream& operator<<(std::ostream&, const Quad&);
 };
 

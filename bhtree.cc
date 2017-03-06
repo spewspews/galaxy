@@ -6,7 +6,7 @@ Quad* BHTree::getQuad(const Body& b) {
 	}
 	auto& q = quads_[i_++];
 	q.setPosMass(b);
-	q.clearChild();
+	q.c.fill(QB{});
 	return &q;
 }
 
