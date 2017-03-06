@@ -20,30 +20,78 @@ class RandGen {
 	}
 };
 
+struct Range {
+	double v, rand;
+	Range() : v{0}, rand{0} {}
+	Range(double f) : v{f}, rand{0} {}
+	Range(double f, double frand) : v{f}, rand{frand} {}
+};
+
 Galaxy glxy;
 RandGen randGen;
-Vector gv;
-double d = 100, drand, sz = 25, szrand, v, vrand, av, avrand, gs = 2000;
-bool c;
+Vector o, gv;
+Range d{100}, sz{25}, v, av;
+double gs{2000};
+bool c{true};
 
 void mkbodies() {
-	for(auto x = -gs / 2; x < gs / 2; x += d)
-		for(auto y = -gs / 2; y < gs / 2; y += d) {
-			Vector p{x + randGen(-drand, drand), y + randGen(-drand, drand)};
+	for(auto x = -gs / 2; x < gs / 2; x += d.v) {
+		for(auto y = -gs / 2; y < gs / 2; y += d.v) {
+			Vector p{x + randGen(-d.rand, d.rand),
+			         y + randGen(-d.rand, d.rand)};
 			if(c && std::hypot(p.x, p.y) > gs / 2)
 				continue;
-			auto& b = glxy.newBody();
+			Body b{sz.v + randGen(-sz.rand, sz.rand)};
 			b.p = p;
-			b.v = Vector::polar(randGen(0, M_PI2), v + randGen(-vrand, vrand));
-			b.v.x += gv.x - p.y * (av + randGen(-avrand, avrand)) / 1000;
-			b.v.y += gv.y + p.x * (av + randGen(-avrand, avrand)) / 1000;
-			b.size = sz + randGen(-szrand, szrand);
+			b.v = Vector::polar(randGen(0, M_PI2),
+			                    v.v + randGen(-v.rand, v.rand));
+			b.v.x += gv.x - p.y * (av.v + randGen(-av.rand, av.rand)) / 1000;
+			b.v.y += gv.y + p.x * (av.v + randGen(-av.rand, av.rand)) / 1000;
+			glxy.bodies.push_back(b);
 		}
+	}
+}
+
+std::istream& operator>>(std::istream& is, Range& r) {
+	is >> r.v;
+	if(!is.good())
+		return is;
+
+	char c{'Z'};
+	is >> c;
+	if(c == '+') {
+		is >> r.rand;
+		return is;
+	}
+
+	return is;
+}
+
+void doArgs(flags::args& args) {
+	if(auto f = args.get<Range>("d"))
+		d = *f;
+	if(auto f = args.get<Range>("sz"))
+		sz = *f;
+	if(auto f = args.get<Range>("v"))
+		v = *f;
+	if(auto f = args.get<Range>("av"))
+		av = *f;
+	if(auto f = args.get<Vector>("gv"))
+		gv = *f;
+	if(auto f = args.get<Vector>("o"))
+		o = *f;
+	c = !args.get<bool>("sq", false);
 }
 
 int main(int argc, char** argv) {
-	const flags::args args{argc, argv};
+	flags::args args{argc, argv};
+	doArgs(args);
+	auto& arg = args.positional();
+	if(arg.size() == 1) {
+		std::istringstream ss{arg[0].to_string()};
+		ss >> gs;
+	}
 	mkbodies();
 	for(auto& b : glxy.bodies)
-		std::cout << b;
+		std::cout << "BODY " << b << "\n";
 }

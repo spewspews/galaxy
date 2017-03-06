@@ -40,7 +40,7 @@ class Vector {
 	Vector& operator/=(double);
 
 	friend std::ostream& operator<<(std::ostream&, const Vector&);
-	friend std::istream& operator<<(std::istream&, Vector&);
+	friend std::istream& operator>>(std::istream&, Vector&);
 };
 
 class Body {
@@ -57,14 +57,18 @@ class Body {
 		g = static_cast<uint8_t>(color >> 2 & 0xff);
 		b = static_cast<uint8_t>(color >> 1 & 0xff);
 	}
+	Body() : Body{0} {}
 
-	Body& operator=(const Body& b) {
-		p = b.p;
-		v = b.v;
-		a = b.a;
-		newa = b.newa;
-		size = b.size;
-		mass = b.mass;
+	Body& operator=(const Body& nb) {
+		p = nb.p;
+		v = nb.v;
+		a = nb.a;
+		newa = nb.newa;
+		size = nb.size;
+		mass = nb.mass;
+		r = nb.r;
+		g = nb.g;
+		b = nb.b;
 		return *this;
 	}
 	friend std::ostream& operator<<(std::ostream&, const Body&);
@@ -80,11 +84,6 @@ class Galaxy {
 
 	Galaxy() : limit{10} {};
 
-	Body& newBody(double scale) {
-		bodies.push_back(Body{defaultSize_ * scale});
-		return bodies.back();
-	}
-	Body& newBody() { return newBody(0); }
 	void checkLimit(const Vector&);
 	Vector center();
 };

@@ -1,18 +1,18 @@
 #include "nbody.h"
 #include <SDL2/SDL2_gfxPrimitives.h>
 
-void Mouse::operator()(Galaxy& g, Simulator& s) {
-	s.pause();
+void Mouse::operator()(Galaxy& g) {
 	update();
 	switch(buttons_) {
 	case SDL_BUTTON_LMASK:
+		ui_.sim_.pause();
 		body(g);
+		ui_.sim_.unpause();
 		break;
 	case SDL_BUTTON_RMASK:
 		move(g);
 		break;
 	}
-	s.unpause();
 }
 
 void Mouse::update() {
@@ -25,10 +25,11 @@ void Mouse::update() {
 }
 
 void Mouse::body(Galaxy& g) {
-	auto& b = g.newBody(ui_.scale_);
+	auto b = Body{ui_.scale_};
 	b.p = vp;
 	for(;;) {
 		ui_.draw(g);
+		ui_.draw(b);
 		ui_.draw(b, b.v);
 		update();
 		if(!(buttons_ & SDL_BUTTON_LMASK))
@@ -40,6 +41,7 @@ void Mouse::body(Galaxy& g) {
 		else
 			b.p = vp;
 	}
+	g.bodies.push_back(b);
 	ui_.orig_ = ui_.toPoint(g.center());
 	g.checkLimit(b.p);
 	ui_.draw(g);
@@ -53,6 +55,7 @@ void Mouse::setSize(Body& b, const Galaxy& g) {
 		b.size = h == 0 ? 2.0 * ui_.scale_ : h;
 		b.mass = b.size * b.size * b.size;
 		ui_.draw(g);
+		ui_.draw(b);
 		ui_.draw(b, b.v);
 		update();
 		if(buttons_ != (SDL_BUTTON_LMASK | SDL_BUTTON_MMASK))
@@ -66,6 +69,7 @@ void Mouse::setVel(Body& b, const Galaxy& g) {
 	for(;;) {
 		b.v = (vp - b.p) / 10;
 		ui_.draw(g);
+		ui_.draw(b);
 		ui_.draw(b, b.v);
 		update();
 		if(buttons_ != (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
@@ -78,9 +82,11 @@ void Mouse::move(const Galaxy& g) {
 	auto oldp = p;
 	for(;;) {
 		update();
+		ui_.sim_.pause();
 		ui_.orig_ += p - oldp;
 		oldp = p;
 		ui_.draw(g);
+		ui_.sim_.unpause();
 		if(buttons_ != SDL_BUTTON_RMASK)
 			break;
 	}
@@ -112,12 +118,11 @@ void UI::draw(const Galaxy& g) const {
 void UI::draw(const Body& b) const {
 	auto pos = toPoint(b.p);
 	auto drawSize = static_cast<int>(b.size / scale_);
-	auto err1 =
-	    aacircleRGBA(renderer_, pos.x, pos.y, drawSize, b.r, b.g, b.b, 0xff);
-	auto err2 = filledCircleRGBA(renderer_, pos.x, pos.y, drawSize, b.r, b.g,
-	                             b.b, 0xff);
-	if(err1 == -1 || err2 == -1) {
-		std::cerr << "Could not draw circle: " << SDL_GetError();
+
+	auto err = filledCircleRGBA(renderer_, pos.x, pos.y, drawSize, b.r, b.g,
+	                            b.b, 0xcf);
+	if(err) {
+		std::cerr << "Could not draw circle: " << SDL_GetError() << "\n";
 		exit(1);
 	}
 }
@@ -140,7 +145,8 @@ void UI::init() {
 	}
 
 	screen_ = SDL_CreateWindow("Galaxy", SDL_WINDOWPOS_UNDEFINED,
-	                           SDL_WINDOWPOS_UNDEFINED, 640, 640, 0);
+	                           SDL_WINDOWPOS_UNDEFINED, 640, 640,
+	                           SDL_WINDOW_RESIZABLE);
 	if(screen_ == nullptr) {
 		std::cerr << "Could not create window: " << SDL_GetError() << "\n";
 		exit(1);
@@ -152,11 +158,12 @@ void UI::init() {
 		exit(1);
 	}
 	SDL_GetWindowSize(screen_, &orig_.x, &orig_.y);
-	//	SDL_GetRendererOutputSize(renderer_, &orig_.x, &orig_.y);
 	orig_ /= 2;
 }
 
-void UI::loop(Galaxy& g, Simulator& s) {
+void UI::loop(Galaxy& g) {
+	SDL_GetWindowSize(screen_, &orig_.x, &orig_.y);
+	orig_ /= 2;
 	for(;;) {
 		SDL_Event e;
 		while(SDL_PollEvent(&e) != 0) {
@@ -172,14 +179,15 @@ void UI::loop(Galaxy& g, Simulator& s) {
 
 			case SDL_WINDOWEVENT:
 				if(e.window.event == SDL_WINDOWEVENT_RESIZED) {
-					s.pause();
+					sim_.pause();
 					SDL_SetWindowSize(screen_, e.window.data1, e.window.data2);
-					s.unpause();
+					orig_ = Point{e.window.data1, e.window.data2} / 2;
+					sim_.unpause();
 				}
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
-				mouse_(g, s);
+				mouse_(g);
 				break;
 			}
 		}

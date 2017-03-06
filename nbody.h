@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <experimental/optional>
 #include <random>
 #include <thread>
 
@@ -17,8 +18,10 @@ class Point {
 
 	Point& operator=(const Point&);
 
-	Point operator+(const Point& p) const { return {x + p.x, y + p.y}; }
-	Point operator-(const Point& p) const { return {x - p.x, y - p.y}; }
+	Point operator+(const Point& p) const { return Point{x + p.x, y + p.y}; }
+	Point operator-(const Point& p) const { return Point{x - p.x, y - p.y}; }
+
+	Point operator/(int s) const { return Point{x / s, y / s}; }
 
 	Point& operator+=(const Point&);
 	Point& operator-=(const Point&);
@@ -26,6 +29,7 @@ class Point {
 	Point& operator/=(int);
 
 	friend std::ostream& operator<<(std::ostream&, const Point&);
+	friend std::istream& operator>>(std::istream&, Point&);
 };
 
 class Quad;
@@ -65,7 +69,7 @@ class BHTree {
 	void calcforces(Body&, QB, double);
 	void resize() {
 		size_ *= 2;
-		if(size_ > 10000) {
+		if(size_ > 1000000) {
 			std::cerr << "Too many quads\n";
 			exit(1);
 		}
@@ -93,6 +97,8 @@ class Simulator {
 	void simulate(Galaxy& g, UI& ui);
 	void pause();
 	void unpause();
+
+	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
 };
 
 class Mouse {
@@ -109,17 +115,18 @@ class Mouse {
 	Point p;
 	Vector vp;
 
-	void operator()(Galaxy&, Simulator&);
+	void operator()(Galaxy&);
 	void update();
 };
 
 class UI {
+	Simulator& sim_;
 	friend class Mouse;
 	Mouse mouse_;
+	Point orig_;
 	double scale_;
 	SDL_Window* screen_;
 	SDL_Renderer* renderer_;
-	Point orig_;
 
 	Vector toVector(const Point&) const;
 	Point toPoint(const Vector&) const;
@@ -128,13 +135,20 @@ class UI {
   public:
 	bool showv, showa;
 
-	UI() : mouse_{*this}, scale_{30}, showv{false}, showa{false} { init(); }
+	UI(Simulator& s)
+	    : sim_{s}, mouse_{*this}, scale_{30}, showv{false}, showa{false} {
+		init();
+	}
 
 	void draw(const Galaxy&) const;
 	void draw(const Body&) const;
 	void draw(const Body&, const Vector&) const;
 	double defaultSize();
-	void loop(Galaxy&, Simulator&);
+	void loop(Galaxy&);
+	void pauseSim() { sim_.pause(); }
+	void unpauseSim() { sim_.unpause(); }
+
+	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
 };
 
 extern bool paused;

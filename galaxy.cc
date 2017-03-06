@@ -50,17 +50,11 @@ uint32_t Body::getRandomColor() {
 }
 
 std::ostream& operator<<(std::ostream& os, const Body& b) {
-	os << "BODY " << b.p << " " << b.v << " " << b.size << "\n";
+	os << b.p << " " << b.v << " " << b.size;
 	return os;
 }
 
 std::istream& operator>>(std::istream& is, Body& b) {
-	std::string body;
-	is >> body;
-	if(body != "BODY") {
-		is.setstate(std::ios::failbit);
-		return is;
-	}
 	is >> b.p >> b.v >> b.size;
 	b.mass = b.size * b.size * b.size;
 	return is;
@@ -83,6 +77,7 @@ Vector& Vector::operator-=(const Vector& p) {
 	y -= p.y;
 	return *this;
 }
+
 Vector& Vector::operator/=(double f) {
 	x /= f;
 	y /= f;

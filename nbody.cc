@@ -2,13 +2,30 @@
 #include "flags.h"
 
 std::ostream& operator<<(std::ostream& os, const Point& p) {
-	os << "Point{" << p.x << ", " << p.y << "}";
+	os << "{" << p.x << "," << p.y << "}";
 	return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Quad& q) {
-	os << "Quad{p[" << q.p << "]}";
-	return os;
+std::istream& operator>>(std::istream& is, Point& p) {
+	char c;
+	is >> c;
+	if(c != '{') {
+		is.setstate(std::ios::failbit);
+		return is;
+	}
+
+	is >> p.x;
+	is >> c;
+	if(c != ',') {
+		is.setstate(std::ios::failbit);
+		return is;
+	}
+
+	is >> p.y;
+	is >> c;
+	if(c != '}')
+		is.setstate(std::ios::failbit);
+	return is;
 }
 
 Point& Point::operator=(const Point& p) {
@@ -72,40 +89,75 @@ void Simulator::simulate(Galaxy& g, UI& ui) {
 	t_ = std::thread{[this, &g, &ui] { simLoop(g, ui); }};
 }
 
-void readglxy(Galaxy& g, std::istream& is) {
-	auto i = 0;
+enum class ReadCmd { body, orig, dt, scale, grav, nocmd };
+
+std::istream& operator>>(std::istream& is, ReadCmd& rc) {
+	static std::vector<std::pair<ReadCmd, std::string>> cmds{
+	    {ReadCmd::body, "BODY"},   {ReadCmd::orig, "ORIG"}, {ReadCmd::dt, "DT"},
+	    {ReadCmd::scale, "SCALE"}, {ReadCmd::grav, "GRAV"},
+	};
+
+	std::string s;
+	is >> s;
+	for(auto& c : cmds) {
+		if(c.second == s) {
+			rc = c.first;
+			return is;
+		}
+	}
+	rc = ReadCmd::nocmd;
+	return is;
+}
+
+void load(Galaxy& g, UI& ui, Simulator& sim, std::istream& is) {
 	for(;;) {
-		Body b{0.0};
-		is >> b;
-		if(is.fail()) {
+		ReadCmd rc;
+		is >> rc;
+		Body b;
+		switch(rc) {
+		case ReadCmd::body:
+			if(is >> b) {
+				g.bodies.push_back(b);
+				g.checkLimit(b.p);
+			}
+			break;
+		case ReadCmd::orig:
+			is >> ui.orig_;
+			break;
+		case ReadCmd::dt:
+			is >> sim.dt;
+			sim.dt² = sim.dt * sim.dt;
+			break;
+		case ReadCmd::scale:
+			is >> ui.scale_;
+			break;
+		case ReadCmd::grav:
+		case ReadCmd::nocmd:
 			if(is.eof()) {
 				is.clear();
-				break;
+				return;
 			}
-			std::cerr << "Body read failed\n";
-			is.clear();
-			continue;
+			break;
 		}
-		i++;
-		g.newBody() = b;
-		g.checkLimit(b.p);
 	}
 }
 
 int main(int argc, char** argv) {
 	Galaxy glxy;
 	Simulator sim;
-	UI ui;
+	UI ui{sim};
 
 	const flags::args args(argc, argv);
 
+	auto in = std::ref(std::cin);
 	auto read = args.get<bool>("i", false);
+	auto file = args.get<std::string>("f");
 	if(read) {
-		readglxy(glxy, std::cin);
+		load(glxy, ui, sim, in);
 		glxy.center();
 	}
 	sim.simulate(glxy, ui);
-	ui.loop(glxy, sim);
+	ui.loop(glxy);
 	std::cerr << "Error: ui loop exited\n";
 	exit(1);
 }
