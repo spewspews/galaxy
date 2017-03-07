@@ -1,5 +1,5 @@
 #include "flags.h"
-#include "galaxy.h"
+#include "body.h"
 
 static constexpr double M_PI2 = 6.28318530718e0;
 

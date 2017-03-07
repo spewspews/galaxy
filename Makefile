@@ -3,16 +3,16 @@ CXXFLAGS=-Wall -Wpedantic -Wextra -O2 -std=c++14 -g
 CXX=clang++
 CC=clang++
 
-all: nbody mkgalaxy
+all: galaxy mkgalaxy
 
 install: all
-	cp nbody mkgalaxy /usr/local/bin
+	cp galaxy mkgalaxy /usr/local/bin
 
-nbody: nbody.o ui.o bhtree.o galaxy.o
+galaxy: galaxy.o ui.o bhtree.o body.o
 
-mkgalaxy: mkgalaxy.o galaxy.o
+mkgalaxy: mkgalaxy.o body.o
 
 clean:
-	rm -f *.o nbody mkgalaxy
+	rm -f *.o galaxy mkgalaxy
 
 .PHONY: clean

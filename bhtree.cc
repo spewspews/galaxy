@@ -1,4 +1,4 @@
-#include "nbody.h"
+#include "galaxy.h"
 
 Quad* BHTree::getQuad(const Body& b) {
 	if(i_ == size_) {

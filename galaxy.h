@@ -1,89 +1,149 @@
-#include <cmath>
-#include <cstdint>
-#include <iostream>
-#include <mutex>
+#include "body.h"
+#include <SDL2/SDL.h>
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <random>
-#include <vector>
+#include <thread>
 
-class RandCol {
-	static const std::vector<uint32_t> cols;
-	std::default_random_engine eng;
-	std::uniform_int_distribution<int> dist;
-
+class Point {
   public:
-	RandCol() : eng{0}, dist{0, static_cast<int>(cols.size())} {}
-	uint32_t operator()() { return cols[dist(eng)]; }
+	int x, y;
+
+	Point() : x{0}, y{0} {}
+	Point(int a, int b) : x{a}, y{b} {}
+
+	Point& operator=(const Point&);
+
+	Point operator+(const Point& p) const { return Point{x + p.x, y + p.y}; }
+	Point operator-(const Point& p) const { return Point{x - p.x, y - p.y}; }
+
+	Point operator/(int s) const { return Point{x / s, y / s}; }
+
+	Point& operator+=(const Point&);
+	Point& operator-=(const Point&);
+
+	Point& operator/=(int);
+
+	friend std::ostream& operator<<(std::ostream&, const Point&);
+	friend std::istream& operator>>(std::istream&, Point&);
 };
 
-class Vector {
+class Quad;
+
+class QB {
   public:
-	double x, y;
-
-	Vector() : x{0}, y{0} {};
-	Vector(double a, double b) : x{a}, y{b} {};
-
-	static Vector polar(double ang, double mag) {
-		return {std::cos(ang) * mag, std::sin(ang) * mag};
-	}
-
-	Vector& operator=(const Vector& v);
-
-	Vector operator+(const Vector& v) const { return {x + v.x, y + v.y}; };
-	Vector operator-(const Vector& v) const { return {x - v.x, y - v.y}; }
-
-	Vector& operator+=(const Vector& v);
-	Vector& operator-=(const Vector& v);
-
-	Vector operator*(double m) const { return {x * m, y * m}; }
-	Vector operator/(double m) const { return {x / m, y / m}; }
-
-	Vector& operator/=(double);
-
-	friend std::ostream& operator<<(std::ostream&, const Vector&);
-	friend std::istream& operator>>(std::istream&, Vector&);
+	enum { empty, body, quad } t;
+	union {
+		Quad* q;
+		const Body* b;
+	};
+	QB() : t{empty} {}
 };
 
-class Body {
-	static uint32_t getRandomColor();
-
+class Quad {
   public:
-	Vector p, v, a, newa;
-	double size, mass;
-	uint8_t r, g, b;
-
-	Body(double s) : p{}, v{}, a{}, newa{}, size{s}, mass{s * s * s} {
-		auto color = getRandomColor();
-		r = static_cast<uint8_t>(color >> 3 & 0xff);
-		g = static_cast<uint8_t>(color >> 2 & 0xff);
-		b = static_cast<uint8_t>(color >> 1 & 0xff);
+	Vector p;
+	double mass;
+	std::array<QB, 4> c;
+	Quad() {}
+	void setPosMass(const Body& b) {
+		p = b.p;
+		mass = b.mass;
 	}
-	Body() : Body{0} {}
-
-	Body& operator=(const Body& nb) {
-		p = nb.p;
-		v = nb.v;
-		a = nb.a;
-		newa = nb.newa;
-		size = nb.size;
-		mass = nb.mass;
-		r = nb.r;
-		g = nb.g;
-		b = nb.b;
-		return *this;
-	}
-	friend std::ostream& operator<<(std::ostream&, const Body&);
-	friend std::istream& operator>>(std::istream&, Body&);
+	friend std::ostream& operator<<(std::ostream&, const Quad&);
 };
 
-class Galaxy {
-	static constexpr double defaultSize_ = 2.0;
+class BHTree {
+	std::vector<Quad> quads_;
+	QB root_;
+	size_t i_, size_;
+	double ε_, G_, θ_;
+
+	bool insert(const Body&, double);
+	void insert(Galaxy&);
+	Quad* getQuad(const Body&);
+	void calcforces(Body&, QB, double);
+	void resize() {
+		size_ *= 2;
+		if(size_ > 1000000) {
+			std::cerr << "Too many quads\n";
+			exit(1);
+		}
+		quads_.resize(size_);
+	}
 
   public:
-	double limit;
-	std::vector<Body> bodies;
+	BHTree() : quads_{5}, size_{quads_.size()}, ε_{500}, G_{1}, θ_{1} {};
+	void calcforces(Galaxy&);
+};
 
-	Galaxy() : limit{10} {};
+class UI;
 
-	void checkLimit(const Vector&);
-	Vector center();
+class Simulator {
+	std::atomic_bool pause_, paused_;
+	std::condition_variable cvp_, cvpd_;
+	std::mutex mup_, mupd_;
+	std::thread t_;
+	void simLoop(Galaxy& g, UI& ui);
+
+  public:
+	double dt, dt²;
+	Simulator() : pause_{false}, paused_{false}, dt{0.1}, dt²{dt * dt} {};
+
+	void simulate(Galaxy& g, UI& ui);
+	void pause();
+	void unpause();
+
+	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
+};
+
+class Mouse {
+	Uint32 buttons_;
+	UI& ui_;
+
+	void body(Galaxy&);
+	void move(const Galaxy&);
+	void setSize(Body&, const Galaxy&);
+	void setVel(Body&, const Galaxy&);
+
+  public:
+	Mouse(UI& ui) : ui_{ui} {}
+	Point p;
+	Vector vp;
+
+	void operator()(Galaxy&);
+	void update();
+};
+
+class UI {
+	Simulator& sim_;
+	friend class Mouse;
+	Mouse mouse_;
+	Point orig_;
+	double scale_;
+	SDL_Window* screen_;
+	SDL_Renderer* renderer_;
+
+	Vector toVector(const Point&) const;
+	Point toPoint(const Vector&) const;
+	void center();
+	void init();
+
+  public:
+	bool showv, showa;
+
+	UI(Simulator& s)
+	    : sim_{s}, mouse_{*this}, scale_{30}, showv{false}, showa{false} {
+		init();
+	}
+
+	void draw(const Galaxy&) const;
+	void draw(const Body&) const;
+	void draw(const Body&, const Vector&) const;
+	double defaultSize();
+	void loop(Galaxy&);
+
+	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
 };
