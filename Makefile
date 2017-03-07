@@ -15,4 +15,4 @@ mkgalaxy: mkgalaxy.o body.o
 clean:
 	rm -f *.o galaxy mkgalaxy
 
-.PHONY: clean
+.PHONY: clean all
