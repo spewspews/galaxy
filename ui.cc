@@ -1,18 +1,19 @@
 #include "nbody.h"
+#include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
 
 void Mouse::operator()(Galaxy& g) {
+	ui_.sim_.pause();
 	update();
 	switch(buttons_) {
 	case SDL_BUTTON_LMASK:
-		ui_.sim_.pause();
 		body(g);
-		ui_.sim_.unpause();
 		break;
 	case SDL_BUTTON_RMASK:
 		move(g);
 		break;
 	}
+	ui_.sim_.unpause();
 }
 
 void Mouse::update() {
@@ -82,11 +83,9 @@ void Mouse::move(const Galaxy& g) {
 	auto oldp = p;
 	for(;;) {
 		update();
-		ui_.sim_.pause();
 		ui_.orig_ += p - oldp;
 		oldp = p;
 		ui_.draw(g);
-		ui_.sim_.unpause();
 		if(buttons_ != SDL_BUTTON_RMASK)
 			break;
 	}
@@ -161,12 +160,21 @@ void UI::init() {
 	orig_ /= 2;
 }
 
-void UI::loop(Galaxy& g) {
+void UI::center() {
+	sim_.pause();
+	SDL_PumpEvents();
+	SDL_FlushEvent(SDL_WINDOWEVENT_RESIZED);
+	sim_.unpause();
 	SDL_GetWindowSize(screen_, &orig_.x, &orig_.y);
 	orig_ /= 2;
+}
+
+void UI::loop(Galaxy& g) {
+	center();
 	for(;;) {
+		sim_.pause();
 		SDL_Event e;
-		while(SDL_PollEvent(&e) != 0) {
+		while(SDL_PollEvent(&e)) {
 			switch(e.type) {
 			case SDL_QUIT:
 				exit(0);
@@ -177,20 +185,12 @@ void UI::loop(Galaxy& g) {
 					exit(0);
 				break;
 
-			case SDL_WINDOWEVENT:
-				if(e.window.event == SDL_WINDOWEVENT_RESIZED) {
-					sim_.pause();
-					SDL_SetWindowSize(screen_, e.window.data1, e.window.data2);
-					orig_ = Point{e.window.data1, e.window.data2} / 2;
-					sim_.unpause();
-				}
-				break;
-
 			case SDL_MOUSEBUTTONDOWN:
 				mouse_(g);
 				break;
 			}
 		}
+		sim_.unpause();
 		SDL_Delay(100);
 	}
 }

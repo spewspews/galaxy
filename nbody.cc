@@ -54,7 +54,7 @@ Point& Point::operator-=(const Point& p) {
 
 void Simulator::pause() {
 	pause_ = true;
-	std::unique_lock<std::mutex> lk(mupd_);
+	std::unique_lock<std::mutex> lk{mupd_};
 	while(!paused_)
 		cvpd_.wait(lk);
 }
@@ -62,6 +62,9 @@ void Simulator::pause() {
 void Simulator::unpause() {
 	pause_ = false;
 	cvp_.notify_one();
+	std::unique_lock<std::mutex> lk{mupd_};
+	while(paused_)
+		cvpd_.wait(lk);
 }
 
 void Simulator::simLoop(Galaxy& g, UI& ui) {
@@ -70,10 +73,11 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 		if(pause_) {
 			paused_ = true;
 			cvpd_.notify_one();
-			std::unique_lock<std::mutex> lk(mup_);
+			std::unique_lock<std::mutex> lk{mup_};
 			while(pause_)
 				cvp_.wait(lk);
 			paused_ = false;
+			cvpd_.notify_one();
 		}
 		ui.draw(g);
 		tree.calcforces(g);

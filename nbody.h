@@ -4,7 +4,6 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <experimental/optional>
 #include <random>
 #include <thread>
 
@@ -13,7 +12,6 @@ class Point {
 	int x, y;
 
 	Point() : x{0}, y{0} {}
-	Point(SDL_Point& p) : x{p.x}, y{p.y} {}
 	Point(int a, int b) : x{a}, y{b} {}
 
 	Point& operator=(const Point&);
@@ -130,6 +128,7 @@ class UI {
 
 	Vector toVector(const Point&) const;
 	Point toPoint(const Vector&) const;
+	void center();
 	void init();
 
   public:
@@ -145,10 +144,6 @@ class UI {
 	void draw(const Body&, const Vector&) const;
 	double defaultSize();
 	void loop(Galaxy&);
-	void pauseSim() { sim_.pause(); }
-	void unpauseSim() { sim_.unpause(); }
 
 	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
 };
-
-extern bool paused;
