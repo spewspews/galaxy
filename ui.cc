@@ -120,7 +120,7 @@ void UI::draw(const Body& b) const {
 	auto drawSize = static_cast<int>(b.size / scale_);
 
 	auto err = filledCircleRGBA(renderer_, pos.x, pos.y, drawSize, b.r, b.g,
-	                            b.b, 0xcf);
+	                            b.b, 0xff);
 	if(err) {
 		std::cerr << "Could not draw circle: " << SDL_GetError() << "\n";
 		exit(1);

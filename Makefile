@@ -5,6 +5,9 @@ CC=clang++
 
 all: nbody mkgalaxy
 
+install: all
+	cp nbody mkgalaxy /usr/local/bin
+
 nbody: nbody.o ui.o bhtree.o galaxy.o
 
 mkgalaxy: mkgalaxy.o galaxy.o
