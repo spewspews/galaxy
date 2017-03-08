@@ -1,7 +1,7 @@
 LDLIBS=-lSDL2 -lSDL2_gfx -lpthread
 CXXFLAGS=-Wall -Wpedantic -Wextra -O2 -std=c++14 -g
-CXX=clang++
-CC=clang++
+CXX?=clang++
+CC?=clang++
 
 all: galaxy mkgalaxy
 
