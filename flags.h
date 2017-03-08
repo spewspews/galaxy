@@ -10,6 +10,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <iostream>
 
 namespace flags {
 using std::experimental::make_array;
@@ -42,7 +43,13 @@ struct parser {
   private:
 	// Advance the state machine for the current token.
 	void churn(const string_view& item) {
-		item.at(0) == '-' ? on_option(item) : on_value(item);
+		if(item.at(0) == '-') {
+			if(current_option_) {
+				on_value(item);
+			}
+			on_option(item);
+		} else
+			on_value(item);
 	}
 
 	// Consumes the current option if there is one.

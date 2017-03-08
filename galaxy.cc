@@ -93,26 +93,6 @@ void Simulator::simulate(Galaxy& g, UI& ui) {
 	t_ = std::thread{[this, &g, &ui] { simLoop(g, ui); }};
 }
 
-enum class ReadCmd { body, orig, dt, scale, grav, nocmd };
-
-std::istream& operator>>(std::istream& is, ReadCmd& rc) {
-	static std::vector<std::pair<ReadCmd, std::string>> cmds{
-	    {ReadCmd::body, "BODY"},   {ReadCmd::orig, "ORIG"}, {ReadCmd::dt, "DT"},
-	    {ReadCmd::scale, "SCALE"}, {ReadCmd::grav, "GRAV"},
-	};
-
-	std::string s;
-	is >> s;
-	for(auto& c : cmds) {
-		if(c.second == s) {
-			rc = c.first;
-			return is;
-		}
-	}
-	rc = ReadCmd::nocmd;
-	return is;
-}
-
 void load(Galaxy& g, UI& ui, Simulator& sim, std::istream& is) {
 	for(;;) {
 		ReadCmd rc;

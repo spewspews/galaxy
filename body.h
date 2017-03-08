@@ -15,6 +15,10 @@ class RandCol {
 	uint32_t operator()() { return cols[dist(eng)]; }
 };
 
+enum class ReadCmd { body, orig, dt, scale, grav, nocmd };
+
+std::istream& operator>>(std::istream&, ReadCmd&);
+
 class Vector {
   public:
 	double x, y;

@@ -17,6 +17,24 @@ const std::vector<uint32_t> RandCol::cols = {
     DPalegreygreen, DYellowgreen, DGreyblue,  DPalegreyblue,  DBlue,
     DBluegreen,     DGreygreen,   DMedgreen};
 
+std::istream& operator>>(std::istream& is, ReadCmd& rc) {
+	static std::vector<std::pair<ReadCmd, std::string>> cmds{
+	    {ReadCmd::body, "BODY"},   {ReadCmd::orig, "ORIG"}, {ReadCmd::dt, "DT"},
+	    {ReadCmd::scale, "SCALE"}, {ReadCmd::grav, "GRAV"},
+	};
+
+	std::string s;
+	is >> s;
+	for(auto& c : cmds) {
+		if(c.second == s) {
+			rc = c.first;
+			return is;
+		}
+	}
+	rc = ReadCmd::nocmd;
+	return is;
+}
+
 std::ostream& operator<<(std::ostream& os, const Vector& v) {
 	os << "{" << v.x << "," << v.y << "}";
 	return os;

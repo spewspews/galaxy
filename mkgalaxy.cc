@@ -27,7 +27,7 @@ struct Range {
 	Range(double f, double frand) : v{f}, rand{frand} {}
 };
 
-Galaxy glxy;
+Galaxy old, glxy;
 RandGen randGen;
 Vector o, gv;
 Range d{100}, sz{25}, v, av;
@@ -67,7 +67,31 @@ std::istream& operator>>(std::istream& is, Range& r) {
 	return is;
 }
 
+void load(Galaxy& g, std::istream& is) {
+	for(;;) {
+		ReadCmd rc;
+		is >> rc;
+		Body b;
+		switch(rc) {
+		default:
+			break;
+		case ReadCmd::body:
+			if(is >> b)
+				g.bodies.push_back(b);
+			break;
+		case ReadCmd::nocmd:
+			if(is.eof()) {
+				is.clear();
+				return;
+			}
+			break;
+		}
+	}
+}
+
 void doArgs(flags::args& args) {
+	if(args.get<bool>("i"))
+		load(old, std::cin);
 	if(auto f = args.get<Range>("d"))
 		d = *f;
 	if(auto f = args.get<Range>("sz"))
@@ -91,7 +115,14 @@ int main(int argc, char** argv) {
 		std::istringstream ss{arg[0].to_string()};
 		ss >> gs;
 	}
+
 	mkbodies();
-	for(auto& b : glxy.bodies)
+
+	for(auto& b : old.bodies)
 		std::cout << "BODY " << b << "\n";
+
+	for(auto& b : glxy.bodies) {
+		b.p += o;
+		std::cout << "BODY " << b << "\n";
+	}
 }
