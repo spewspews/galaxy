@@ -36,28 +36,14 @@ std::istream& operator>>(std::istream& is, ReadCmd& rc) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Vector& v) {
-	os << "{" << v.x << "," << v.y << "}";
+	os << v.x << "," << v.y;
 	return os;
 }
 
 std::istream& operator>>(std::istream& is, Vector& v) {
 	char c;
-	is >> c;
-	if(c != '{') {
-		is.setstate(std::ios::failbit);
-		return is;
-	}
-
-	is >> v.x;
-	is >> c;
-	if(c != ',') {
-		is.setstate(std::ios::failbit);
-		return is;
-	}
-
-	is >> v.y;
-	is >> c;
-	if(c != '}')
+	is >> v.x >> c >> v.y;
+	if(c != ',')
 		is.setstate(std::ios::failbit);
 	return is;
 }
@@ -68,7 +54,7 @@ uint32_t Body::getRandomColor() {
 }
 
 std::ostream& operator<<(std::ostream& os, const Body& b) {
-	os << b.p << " " << b.v << " " << b.size;
+	os << b.p << ' ' << b.v << ' ' << b.size;
 	return os;
 }
 

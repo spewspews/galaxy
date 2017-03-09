@@ -2,28 +2,14 @@
 #include "flags.h"
 
 std::ostream& operator<<(std::ostream& os, const Point& p) {
-	os << "{" << p.x << "," << p.y << "}";
+	os << p.x << "," << p.y;
 	return os;
 }
 
 std::istream& operator>>(std::istream& is, Point& p) {
 	char c;
-	is >> c;
-	if(c != '{') {
-		is.setstate(std::ios::failbit);
-		return is;
-	}
-
-	is >> p.x;
-	is >> c;
-	if(c != ',') {
-		is.setstate(std::ios::failbit);
-		return is;
-	}
-
-	is >> p.y;
-	is >> c;
-	if(c != '}')
+	is >> p.x >> c >> p.y;
+	if(c != ',')
 		is.setstate(std::ios::failbit);
 	return is;
 }
