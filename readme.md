@@ -15,3 +15,7 @@ mkgalaxy -av 100 -d 60+50 -v 10 2000 |
 mkgalaxy -i -av -70 -d 80+50 -v 10 -o '{6000,2000}' -gv '{-80,40}' 3000 |
 galaxy -i
 ```
+
+```
+mkgalaxy -sq -av 100 -d 60+1 3000 | mkgalaxy -i -o '{5000,3000}' 4000 -av -50 | galaxy -i
+```
