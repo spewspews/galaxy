@@ -38,14 +38,22 @@ Point& Point::operator-=(const Point& p) {
 	return *this;
 }
 
-void Simulator::pause() {
+void Simulator::pause(int id) {
+	if(pid_ != -1 && pid_ > id)
+		return;
+	pid_ = id;
+	if(paused_)
+		return;
 	pause_ = true;
 	std::unique_lock<std::mutex> lk{mupd_};
 	while(!paused_)
 		cvpd_.wait(lk);
 }
 
-void Simulator::unpause() {
+void Simulator::unpause(int id) {
+	if(!paused_ || pid_ != id)
+		return;
+	pid_ = -1;
 	pause_ = false;
 	cvp_.notify_one();
 	std::unique_lock<std::mutex> lk{mupd_};
@@ -112,22 +120,34 @@ void load(Galaxy& g, UI& ui, Simulator& sim, std::istream& is) {
 	}
 }
 
+void shutdown(int c) {
+	SDL_Quit();
+	exit(c);
+}
+
+char *argv0;
+
+void usage() {
+	std::cerr << "Usage: " << argv0 << " [-i]\n";
+	exit(1);
+}
+
 int main(int argc, char** argv) {
+	argv0 = argv[0];
+	const flags::args args(argc, argv);
+	if(args.get<bool>("help", false) || args.get<bool>("h", false))
+		usage();
+
 	Galaxy glxy;
 	Simulator sim;
 	UI ui{sim};
-
-	const flags::args args(argc, argv);
-
-	auto in = std::ref(std::cin);
-	auto read = args.get<bool>("i", false);
-	auto file = args.get<std::string>("f");
-	if(read) {
-		load(glxy, ui, sim, in);
+	if(args.get<bool>("i", false)) {
+		load(glxy, ui, sim, std::cin);
 		glxy.center();
 	}
+
 	sim.simulate(glxy, ui);
 	ui.loop(glxy);
 	std::cerr << "Error: ui loop exited\n";
-	exit(1);
+	shutdown(1);
 }

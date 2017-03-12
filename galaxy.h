@@ -7,8 +7,9 @@
 #include <random>
 #include <thread>
 
-class Point {
-  public:
+void shutdown(int);
+
+struct Point {
 	int x, y;
 
 	Point() : x{0}, y{0} {}
@@ -30,10 +31,9 @@ class Point {
 	friend std::istream& operator>>(std::istream&, Point&);
 };
 
-class Quad;
+struct Quad;
 
-class QB {
-  public:
+struct QB {
 	enum { empty, body, quad } t;
 	union {
 		Quad* q;
@@ -42,8 +42,7 @@ class QB {
 	QB() : t{empty} {}
 };
 
-class Quad {
-  public:
+struct Quad {
 	Vector p;
 	double mass;
 	std::array<QB, 4> c;
@@ -55,7 +54,12 @@ class Quad {
 	friend std::ostream& operator<<(std::ostream&, const Quad&);
 };
 
-class BHTree {
+struct BHTree {
+  public:
+	BHTree() : quads_{5}, size_{quads_.size()}, ε_{500}, G_{1}, θ_{1} {};
+	void calcforces(Galaxy&);
+
+  private:
 	std::vector<Quad> quads_;
 	QB root_;
 	size_t i_, size_;
@@ -73,69 +77,53 @@ class BHTree {
 		}
 		quads_.resize(size_);
 	}
-
-  public:
-	BHTree() : quads_{5}, size_{quads_.size()}, ε_{500}, G_{1}, θ_{1} {};
-	void calcforces(Galaxy&);
 };
 
-class UI;
+struct UI;
 
-class Simulator {
-	std::atomic_bool pause_, paused_;
+struct Simulator {
+	double dt, dt²;
+
+	Simulator() : dt{0.1}, dt²{dt * dt}, paused_{false}, pause_{false}, pid_{-1} {};
+
+	void simulate(Galaxy& g, UI& ui);
+	void pause(int);
+	void unpause(int);
+	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
+
+  private:
+	std::atomic_bool paused_, pause_;
 	std::condition_variable cvp_, cvpd_;
 	std::mutex mup_, mupd_;
 	std::thread t_;
+	int pid_;
 	void simLoop(Galaxy& g, UI& ui);
-
-  public:
-	double dt, dt²;
-	Simulator() : pause_{false}, paused_{false}, dt{0.1}, dt²{dt * dt} {};
-
-	void simulate(Galaxy& g, UI& ui);
-	void pause();
-	void unpause();
-
-	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
 };
 
-class Mouse {
-	Uint32 buttons_;
-	UI& ui_;
-
-	void body(Galaxy&);
-	void move(const Galaxy&);
-	void setSize(Body&, const Galaxy&);
-	void setVel(Body&, const Galaxy&);
-
-  public:
+struct Mouse {
 	Mouse(UI& ui) : ui_{ui} {}
 	Point p;
 	Vector vp;
 
 	void operator()(Galaxy&);
 	void update();
+
+  private:
+	Uint32 buttons_;
+	UI& ui_;
+
+	void body(Galaxy&);
+	void zoom(const Galaxy&);
+	void move(const Galaxy&);
+	void setSize(Body&, const Galaxy&);
+	void setVel(Body&, const Galaxy&);
 };
 
-class UI {
-	Simulator& sim_;
-	friend class Mouse;
-	Mouse mouse_;
-	Point orig_;
-	double scale_;
-	SDL_Window* screen_;
-	SDL_Renderer* renderer_;
-
-	Vector toVector(const Point&) const;
-	Point toPoint(const Vector&) const;
-	void center();
-	void init();
-
-  public:
+struct UI {
 	bool showv, showa;
 
 	UI(Simulator& s)
-	    : sim_{s}, mouse_{*this}, scale_{30}, showv{false}, showa{false} {
+	    : showv{false}, showa{false}, sim_{s}, mouse_{*this}, scale_{30}, paused_{false} {
 		init();
 	}
 
@@ -146,4 +134,19 @@ class UI {
 	void loop(Galaxy&);
 
 	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
+
+  private:
+	Simulator& sim_;
+	friend struct Mouse;
+	Mouse mouse_;
+	Point orig_;
+	double scale_;
+	SDL_Window* screen_;
+	SDL_Renderer* renderer_;
+	bool paused_;
+
+	Vector toVector(const Point&) const;
+	Point toPoint(const Vector&) const;
+	void center();
+	void init();
 };

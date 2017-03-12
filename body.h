@@ -5,22 +5,20 @@
 #include <random>
 #include <vector>
 
-class RandCol {
+struct RandCol {
 	static const std::vector<uint32_t> cols;
 	std::default_random_engine eng;
 	std::uniform_int_distribution<int> dist;
 
-  public:
 	RandCol() : eng{0}, dist{0, static_cast<int>(cols.size())} {}
 	uint32_t operator()() { return cols[dist(eng)]; }
 };
 
-enum class ReadCmd { body, orig, dt, scale, grav, nocmd };
+enum struct ReadCmd { body, orig, dt, scale, grav, nocmd };
 
 std::istream& operator>>(std::istream&, ReadCmd&);
 
-class Vector {
-  public:
+struct Vector {
 	double x, y;
 
 	Vector() : x{0}, y{0} {};
@@ -47,10 +45,7 @@ class Vector {
 	friend std::istream& operator>>(std::istream&, Vector&);
 };
 
-class Body {
-	static uint32_t getRandomColor();
-
-  public:
+struct Body {
 	Vector p, v, a, newa;
 	double size, mass;
 	uint8_t r, g, b;
@@ -77,14 +72,16 @@ class Body {
 	}
 	friend std::ostream& operator<<(std::ostream&, const Body&);
 	friend std::istream& operator>>(std::istream&, Body&);
+
+  private:
+	static uint32_t getRandomColor();
 };
 
-class Galaxy {
-	static constexpr double defaultSize_ = 2.0;
-
-  public:
+struct Galaxy {
 	double limit;
 	std::vector<Body> bodies;
+
+	static constexpr double defaultSize_ = 2.0;
 
 	Galaxy() : limit{10} {};
 
