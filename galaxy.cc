@@ -125,7 +125,7 @@ void shutdown(int c) {
 	exit(c);
 }
 
-char *argv0;
+char* argv0;
 
 void usage() {
 	std::cerr << "Usage: " << argv0 << " [-i]\n";

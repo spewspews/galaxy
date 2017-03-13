@@ -84,7 +84,8 @@ struct UI;
 struct Simulator {
 	double dt, dt²;
 
-	Simulator() : dt{0.1}, dt²{dt * dt}, paused_{false}, pause_{false}, pid_{-1} {};
+	Simulator()
+	    : dt{0.1}, dt²{dt * dt}, paused_{false}, pause_{false}, pid_{-1} {};
 
 	void simulate(Galaxy& g, UI& ui);
 	void pause(int);
@@ -123,7 +124,8 @@ struct UI {
 	bool showv, showa;
 
 	UI(Simulator& s)
-	    : showv{false}, showa{false}, sim_{s}, mouse_{*this}, scale_{30}, paused_{false} {
+	    : showv{false}, showa{false}, sim_{s}, mouse_{*this}, scale_{30},
+	      paused_{false} {
 		init();
 	}
 

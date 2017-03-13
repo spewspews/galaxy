@@ -83,15 +83,21 @@ void Mouse::setVel(Body& b, const Galaxy& g) {
 }
 
 void Mouse::zoom(const Galaxy& g) {
-	auto z = p;
-	auto olds = ui_.scale_;
+	auto op = p;
+	auto oscale = ui_.scale_;
+	Point sc;
+	SDL_GetWindowSize(ui_.screen_, &sc.x, &sc.y);
+	sc /= 2;
 	for(;;) {
 		update();
 		if(buttons_ != SDL_BUTTON_MMASK)
 			break;
-		auto d = p - z;
-		auto f = tanh((double)d.y/200) + 1;
-		ui_.scale_ = f*olds;
+		auto d = p - op;
+		auto z = tanh((double)d.y / 200) + 1;
+		auto gsc = ui_.toVector(sc);
+		ui_.scale_ = z * oscale;
+		auto off = ui_.toPoint(gsc) - sc;
+		ui_.orig_ -= off;
 		ui_.draw(g);
 	}
 }
