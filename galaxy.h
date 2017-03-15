@@ -71,7 +71,7 @@ struct BHTree {
 	void calcforces(Body&, QB, double);
 	void resize() {
 		size_ *= 2;
-		if(size_ > 1000000) {
+		if(size_ > 10000000) {
 			std::cerr << "Too many quads\n";
 			exit(1);
 		}
