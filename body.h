@@ -58,18 +58,6 @@ struct Body {
 	}
 	Body() : Body{0} {}
 
-	Body& operator=(const Body& nb) {
-		p = nb.p;
-		v = nb.v;
-		a = nb.a;
-		newa = nb.newa;
-		size = nb.size;
-		mass = nb.mass;
-		r = nb.r;
-		g = nb.g;
-		b = nb.b;
-		return *this;
-	}
 	friend std::ostream& operator<<(std::ostream&, const Body&);
 	friend std::istream& operator>>(std::istream&, Body&);
 
@@ -78,12 +66,8 @@ struct Body {
 };
 
 struct Galaxy {
-	double limit;
+	double limit{10};
 	std::vector<Body> bodies;
-
-	static constexpr double defaultSize_ = 2.0;
-
-	Galaxy() : limit{10} {};
 
 	void checkLimit(const Vector&);
 	Vector center();

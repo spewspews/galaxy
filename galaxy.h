@@ -141,7 +141,6 @@ struct UI {
 	void draw(const Galaxy&) const;
 	void draw(const Body&) const;
 	void draw(const Body&, const Vector&) const;
-	double defaultSize();
 	void handleEvents(Galaxy&);
 	void loop(Galaxy&);
 
