@@ -135,9 +135,9 @@ void UI::draw(const Galaxy& g) const {
 	SDL_RenderClear(renderer_);
 	for(auto& b : g.bodies) {
 		draw(b);
-		if(showv)
+		if(showv_)
 			draw(b, b.v, vscale);
-		if(showa)
+		if(showa_)
 			draw(b, b.a, ascale);
 	}
 	SDL_RenderPresent(renderer_);
@@ -168,23 +168,24 @@ void UI::draw(const Body& b, const Vector& e, double scale) const {
 
 void UI::init() {
 	if(SDL_Init(SDL_INIT_VIDEO) < 0) {
-		std::cerr << "Could not initialize SDL: " << SDL_GetError() << "\n";
+		std::cerr << "Could not initialize SDL: " << SDL_GetError() << '\n';
 		exit(1);
 	}
 
 	screen_ = SDL_CreateWindow("Galaxy", SDL_WINDOWPOS_UNDEFINED,
 	                           SDL_WINDOWPOS_UNDEFINED, 640, 640,
 	                           SDL_WINDOW_RESIZABLE);
-	if(screen_ == nullptr) {
-		std::cerr << "Could not create window: " << SDL_GetError() << "\n";
-		exit(1);
+	if(!screen_) {
+		std::cerr << "Could not create window: " << SDL_GetError() << '\n';
+		shutdown(1);
 	}
 
 	renderer_ = SDL_CreateRenderer(screen_, -1, 0);
-	if(renderer_ == nullptr) {
-		std::cerr << "Could not create renderer: " << SDL_GetError() << "\n";
-		exit(1);
+	if(!renderer_) {
+		std::cerr << "Could not create renderer: " << SDL_GetError() << '\n';
+		shutdown(1);
 	}
+
 	SDL_GetWindowSize(screen_, &orig_.x, &orig_.y);
 	orig_ /= 2;
 }
@@ -197,6 +198,29 @@ void UI::center() {
 	orig_ /= 2;
 }
 
+void UI::keyboard(SDL_Keycode& kc) {
+	switch(kc) {
+	case SDLK_a:
+		showa_ = !showa_;
+		break;
+	case SDLK_v:
+		showv_ = !showv_;
+		break;
+	case SDLK_q:
+		shutdown(0);
+		break;
+	case SDLK_SPACE:
+		if(paused_) {
+			sim_.unpause(2);
+			paused_ = false;
+		} else {
+			sim_.pause(2);
+			paused_ = true;
+		}
+		break;
+	}
+}
+
 void UI::handleEvents(Galaxy& g) {
 	Pauser psr{sim_, 0};
 	SDL_Event e;
@@ -205,29 +229,9 @@ void UI::handleEvents(Galaxy& g) {
 		case SDL_QUIT:
 			shutdown(0);
 			break;
-
 		case SDL_KEYDOWN:
-			switch(e.key.keysym.sym) {
-			case SDLK_a:
-				showa = !showa;
-				break;
-			case SDLK_v:
-				showv = !showv;
-				break;
-			case SDLK_q:
-				shutdown(0);
-				break;
-			case SDLK_SPACE:
-				if(paused_) {
-					sim_.unpause(2);
-					paused_ = false;
-				} else {
-					sim_.pause(2);
-					paused_ = true;
-				}
-				break;
-			}
-
+			keyboard(e.key.keysym.sym);
+			break;
 		case SDL_MOUSEBUTTONDOWN:
 			mouse_(g);
 			break;

@@ -130,10 +130,8 @@ struct Mouse {
 };
 
 struct UI {
-	bool showv, showa;
-
 	UI(Simulator& s)
-	    : showv{false}, showa{false}, sim_{s}, mouse_{*this}, scale_{30},
+	    : showv_{false}, showa_{false}, sim_{s}, mouse_{*this}, scale_{30},
 	      paused_{false} {
 		init();
 	}
@@ -147,6 +145,7 @@ struct UI {
 	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
 
   private:
+	bool showv_, showa_;
 	Simulator& sim_;
 	friend struct Mouse;
 	Mouse mouse_;
@@ -160,4 +159,5 @@ struct UI {
 	Point toPoint(const Vector&) const;
 	void center();
 	void init();
+	void keyboard(SDL_Keycode&);
 };
