@@ -2,6 +2,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
 
+static constexpr double ascale = 15, vscale = 5;
+
 void Mouse::operator()(Galaxy& g) {
 	update();
 	ui_.sim_.unpause(0);
@@ -36,7 +38,7 @@ void Mouse::body(Galaxy& g) {
 	for(;;) {
 		ui_.draw(g);
 		ui_.draw(b);
-		ui_.draw(b, b.v);
+		ui_.draw(b, b.v, vscale);
 		update();
 		if(!(buttons_ & SDL_BUTTON_LMASK))
 			break;
@@ -62,7 +64,7 @@ void Mouse::setSize(Body& b, const Galaxy& g) {
 		b.mass = b.size * b.size * b.size;
 		ui_.draw(g);
 		ui_.draw(b);
-		ui_.draw(b, b.v);
+		ui_.draw(b, b.v, vscale);
 		update();
 		if(buttons_ != (SDL_BUTTON_LMASK | SDL_BUTTON_MMASK))
 			break;
@@ -73,10 +75,10 @@ void Mouse::setSize(Body& b, const Galaxy& g) {
 void Mouse::setVel(Body& b, const Galaxy& g) {
 	auto oldp = p;
 	for(;;) {
-		b.v = (vp - b.p) / 10;
+		b.v = (vp - b.p) / vscale;
 		ui_.draw(g);
 		ui_.draw(b);
-		ui_.draw(b, b.v);
+		ui_.draw(b, b.v, vscale);
 		update();
 		if(buttons_ != (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
 			break;
@@ -134,9 +136,9 @@ void UI::draw(const Galaxy& g) const {
 	for(auto& b : g.bodies) {
 		draw(b);
 		if(showv)
-			draw(b, b.v);
+			draw(b, b.v, vscale);
 		if(showa)
-			draw(b, b.a);
+			draw(b, b.a, ascale);
 	}
 	SDL_RenderPresent(renderer_);
 }
@@ -153,9 +155,9 @@ void UI::draw(const Body& b) const {
 	}
 }
 
-void UI::draw(const Body& b, const Vector& e) const {
+void UI::draw(const Body& b, const Vector& e, double scale) const {
 	auto spos = toPoint(b.p);
-	auto epos = toPoint(e * 10 + b.p);
+	auto epos = toPoint(e * scale + b.p);
 	auto err = aalineRGBA(renderer_, spos.x, spos.y, epos.x, epos.y, b.r, b.g,
 	                      b.b, 0xff);
 	if(err == -1) {
@@ -196,11 +198,9 @@ void UI::center() {
 }
 
 void UI::handleEvents(Galaxy& g) {
-//	std::cerr << "UI::handleEvents\n";
 	Pauser psr{sim_, 0};
 	SDL_Event e;
 	while(SDL_PollEvent(&e)) {
-//		std::cerr << "UI::handleEvents: got event\n";
 		switch(e.type) {
 		case SDL_QUIT:
 			shutdown(0);
@@ -208,6 +208,12 @@ void UI::handleEvents(Galaxy& g) {
 
 		case SDL_KEYDOWN:
 			switch(e.key.keysym.sym) {
+			case SDLK_a:
+				showa = !showa;
+				break;
+			case SDLK_v:
+				showv = !showv;
+				break;
 			case SDLK_q:
 				shutdown(0);
 				break;

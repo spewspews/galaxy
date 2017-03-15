@@ -140,7 +140,7 @@ struct UI {
 
 	void draw(const Galaxy&) const;
 	void draw(const Body&) const;
-	void draw(const Body&, const Vector&) const;
+	void draw(const Body&, const Vector&, double) const;
 	void handleEvents(Galaxy&);
 	void loop(Galaxy&);
 
