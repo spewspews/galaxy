@@ -18,4 +18,4 @@ man:	galaxy.1
 clean:
 	rm -f *.o galaxy mkgalaxy
 
-.PHONY: clean all man
+.PHONY: clean all man install
