@@ -3,8 +3,8 @@
 #include <SDL2/SDL2_gfxPrimitives.h>
 
 void Mouse::operator()(Galaxy& g) {
-	ui_.sim_.pause(0);
 	update();
+	ui_.sim_.unpause(0);
 	switch(buttons_) {
 	case SDL_BUTTON_LMASK:
 		body(g);
@@ -16,10 +16,11 @@ void Mouse::operator()(Galaxy& g) {
 		move(g);
 		break;
 	}
-	ui_.sim_.unpause(0);
+	ui_.sim_.pause(0);
 }
 
 void Mouse::update() {
+	Pauser psr{ui_.sim_, 0};
 	SDL_RenderPresent(ui_.renderer_);
 	SDL_Delay(5);
 	SDL_PumpEvents();
@@ -29,6 +30,7 @@ void Mouse::update() {
 }
 
 void Mouse::body(Galaxy& g) {
+	Pauser psr{ui_.sim_, 1};
 	auto b = Body{ui_.scale_};
 	b.p = vp;
 	for(;;) {
@@ -95,6 +97,7 @@ void Mouse::zoom(const Galaxy& g) {
 		auto d = p - op;
 		auto z = tanh((double)d.y / 200) + 1;
 		auto gsc = ui_.toVector(sc);
+		Pauser psr{ui_.sim_, 0};
 		ui_.scale_ = z * oscale;
 		auto off = ui_.toPoint(gsc) - sc;
 		ui_.orig_ -= off;
@@ -106,11 +109,12 @@ void Mouse::move(const Galaxy& g) {
 	auto oldp = p;
 	for(;;) {
 		update();
+		if(buttons_ != SDL_BUTTON_RMASK)
+			break;
+		Pauser psr{ui_.sim_, 0};
 		ui_.orig_ += p - oldp;
 		oldp = p;
 		ui_.draw(g);
-		if(buttons_ != SDL_BUTTON_RMASK)
-			break;
 	}
 }
 
@@ -184,47 +188,51 @@ void UI::init() {
 }
 
 void UI::center() {
-	sim_.pause(0);
+	Pauser psr{sim_, 0};
 	SDL_PumpEvents();
 	SDL_FlushEvent(SDL_WINDOWEVENT_RESIZED);
-	sim_.unpause(0);
 	SDL_GetWindowSize(screen_, &orig_.x, &orig_.y);
 	orig_ /= 2;
+}
+
+void UI::handleEvents(Galaxy& g) {
+//	std::cerr << "UI::handleEvents\n";
+	Pauser psr{sim_, 0};
+	SDL_Event e;
+	while(SDL_PollEvent(&e)) {
+//		std::cerr << "UI::handleEvents: got event\n";
+		switch(e.type) {
+		case SDL_QUIT:
+			shutdown(0);
+			break;
+
+		case SDL_KEYDOWN:
+			switch(e.key.keysym.sym) {
+			case SDLK_q:
+				shutdown(0);
+				break;
+			case SDLK_SPACE:
+				if(paused_) {
+					sim_.unpause(2);
+					paused_ = false;
+				} else {
+					sim_.pause(2);
+					paused_ = true;
+				}
+				break;
+			}
+
+		case SDL_MOUSEBUTTONDOWN:
+			mouse_(g);
+			break;
+		}
+	}
 }
 
 void UI::loop(Galaxy& g) {
 	center();
 	for(;;) {
-		sim_.pause(0);
-		SDL_Event e;
-		while(SDL_PollEvent(&e)) {
-			switch(e.type) {
-			case SDL_QUIT:
-				shutdown(0);
-				break;
-
-			case SDL_KEYDOWN:
-				switch(e.key.keysym.sym) {
-				case SDLK_q:
-					shutdown(0);
-					break;
-				case SDLK_SPACE:
-					if(paused_) {
-						sim_.unpause(1);
-						paused_ = false;
-					} else {
-						sim_.pause(1);
-						paused_ = true;
-					}
-					break;
-				}
-
-			case SDL_MOUSEBUTTONDOWN:
-				mouse_(g);
-				break;
-			}
-		}
-		sim_.unpause(0);
+		handleEvents(g);
 		SDL_Delay(100);
 	}
 }

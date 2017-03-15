@@ -101,6 +101,15 @@ struct Simulator {
 	void simLoop(Galaxy& g, UI& ui);
 };
 
+struct Pauser {
+	Pauser(Simulator& sim, int id) : sim_{sim}, id_{id} { sim_.pause(id_); }
+	~Pauser() { sim_.unpause(id_); }
+
+  private:
+	Simulator& sim_;
+	int id_;
+};
+
 struct Mouse {
 	Mouse(UI& ui) : ui_{ui} {}
 	Point p;
@@ -133,6 +142,7 @@ struct UI {
 	void draw(const Body&) const;
 	void draw(const Body&, const Vector&) const;
 	double defaultSize();
+	void handleEvents(Galaxy&);
 	void loop(Galaxy&);
 
 	friend void load(Galaxy&, UI&, Simulator&, std::istream&);

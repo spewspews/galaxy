@@ -17,4 +17,6 @@ galaxy -i
 mkgalaxy -sq -av 100 -d 60+1 3000 | mkgalaxy -i -o 5000,3000 4000 -av=-50 | galaxy -i
 
 mkgalaxy -av 100 -d 30+20 -sz 40+20 1000 | mkgalaxy -i -av 80 -d 40+30 -sz 20 -o 0,3000 -gv 130,-100 1500 | galaxy -i
+
+mkgalaxy -av 40 -sq=true 8000 | mkgalaxy -i -av 50 -sq -o 10000,0 4000 | galaxy -i
 ```
