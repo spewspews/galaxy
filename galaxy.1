@@ -97,17 +97,17 @@ The default value is 0.
 .BI -gv " x,y"
 The entire galaxy being generated is given the directional velocity determined
 by the vector
-.RI ( x,y ).
+.RI ( "x, y" ).
 The default value is (0, 0).
 .TP
 .BI -o " x,y"
 The entire galaxy being generated is offset by the vector
-.RI ( x,y ).
+.RI ( "x, y" ).
 The default value is (0, 0).
 .TP
-.B -sq
+.BI -sq
 The galaxy being generated is a square. Without this option, the galaxy
-will be circular.
+will be circular. This option can take an optional true or false value.
 .PP
 The arguments to the
 .BR -d ,
@@ -145,10 +145,9 @@ mkgalaxy -sq -av 20 5000 | galaxy -i
 J. Barnes & P. Hut (December 1986). "A hierarchical O(N log N) force-calculation algorithm".
 .IR Nature .
 324 (4): 446–449.
-.PP
-.IR galaxy (6)
 .SH HISTORY
 .I Galaxy
 and
 .I mkgalaxy
-first appeared in 9front (Feb, 2017).
+first appeared in 9front (Feb, 2017). This version was written in C++ for Linux
+(Mar, 2017).

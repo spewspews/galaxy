@@ -12,7 +12,10 @@ galaxy: galaxy.o ui.o bhtree.o body.o
 
 mkgalaxy: mkgalaxy.o body.o
 
+man:	galaxy.1
+	cp $< /usr/local/share/man/man1/$<
+
 clean:
 	rm -f *.o galaxy mkgalaxy
 
-.PHONY: clean all
+.PHONY: clean all man
