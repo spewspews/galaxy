@@ -34,12 +34,12 @@ struct Point {
 struct Quad;
 
 struct QB {
-	enum { empty, body, quad } t;
+	enum struct Type { empty, body, quad } t;
 	union {
 		Quad* q;
 		const Body* b;
 	};
-	QB() : t{empty} {}
+	QB() : t{Type::empty} {}
 };
 
 struct Quad {

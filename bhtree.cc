@@ -15,16 +15,16 @@ void BHTree::calcforces(Body& b, QB qb, double size) {
 		Vector d;
 		double h;
 		switch(qb.t) {
-		case QB::empty:
+		case QB::Type::empty:
 			return;
-		case QB::body:
+		case QB::Type::body:
 			if(qb.b == &b)
 				return;
 			d = qb.b->p - b.p;
 			h = std::hypot(std::hypot(d.x, d.y), ε_);
 			b.newa += d * G_ / (h * h * h) * qb.b->mass;
 			return;
-		case QB::quad:
+		case QB::Type::quad:
 			d = qb.q->p - b.p;
 			h = std::hypot(d.x, d.y);
 			if(h != 0.0 && size / h < θ_) {
@@ -43,23 +43,23 @@ void BHTree::calcforces(Body& b, QB qb, double size) {
 }
 
 bool BHTree::insert(const Body& nb, double size) {
-	if(root_.t == QB::empty) {
-		root_.t = QB::body;
+	if(root_.t == QB::Type::empty) {
+		root_.t = QB::Type::body;
 		root_.b = &nb;
 		return true;
 	}
 	double qx{0}, qy{0};
 	auto qb = &root_;
 	for(;;) {
-		if(qb->t == QB::body) {
+		if(qb->t == QB::Type::body) {
 			auto& b = *qb->b;
 			auto qxy = b.p.x < qx ? 0 : 1;
 			qxy |= b.p.y < qy ? 0 : 2;
-			qb->t = QB::quad;
+			qb->t = QB::Type::quad;
 			qb->q = getQuad(b);
 			if(qb->q == nullptr)
 				return false;
-			qb->q->c[qxy].t = QB::body;
+			qb->q->c[qxy].t = QB::Type::body;
 			qb->q->c[qxy].b = &b;
 		}
 		auto& q = *qb->q;
@@ -69,8 +69,8 @@ bool BHTree::insert(const Body& nb, double size) {
 
 		auto qxy = nb.p.x < qx ? 0 : 1;
 		qxy |= nb.p.y < qy ? 0 : 2;
-		if(q.c[qxy].t == QB::empty) {
-			q.c[qxy].t = QB::body;
+		if(q.c[qxy].t == QB::Type::empty) {
+			q.c[qxy].t = QB::Type::body;
 			q.c[qxy].b = &nb;
 			return true;
 		}
@@ -83,7 +83,7 @@ bool BHTree::insert(const Body& nb, double size) {
 
 void BHTree::insert(Galaxy& g) {
 Again:
-	root_.t = QB::empty;
+	root_.t = QB::Type::empty;
 	i_ = 0;
 	for(auto& b : g.bodies) {
 		if(!insert(b, g.limit)) {
