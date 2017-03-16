@@ -118,7 +118,7 @@ bool get(const argument_map& options, const std::string& option) {
 	if(get_value(sval, options, option)) {
 		return std::none_of(
 		    falsities.begin(), falsities.end(),
-		    [&sval](auto falsity) { return sval == falsity; });
+		    [&sval](const std::string& falsity) { return sval == falsity; });
 	}
 	return false;
 }
