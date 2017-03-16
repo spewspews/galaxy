@@ -90,21 +90,26 @@ void load(Galaxy& g, std::istream& is) {
 }
 
 void doArgs(flags::args& args) {
-	if(args.get<bool>("i"))
+	if(args.get("i"))
 		load(old, std::cin);
-	if(auto f = args.get<Range>("d"))
-		d = *f;
-	if(auto f = args.get<Range>("sz"))
-		sz = *f;
-	if(auto f = args.get<Range>("v"))
-		v = *f;
-	if(auto f = args.get<Range>("av"))
-		av = *f;
-	if(auto f = args.get<Vector>("gv"))
-		gv = *f;
-	if(auto f = args.get<Vector>("o"))
-		o = *f;
-	c = !args.get<bool>("sq", false);
+
+	Range r;
+	if(args.get<Range>(r, "d"))
+		d = r;
+	if(args.get<Range>(r, "sz"))
+		sz = r;
+	if(args.get<Range>(r, "v"))
+		v = r;
+	if(args.get<Range>(r, "av"))
+		av = r;
+
+	Vector v;
+	if(args.get<Vector>(v, "gv"))
+		gv = v;
+	if(args.get<Vector>(v, "o"))
+		o = v;
+
+	c = !args.get("sq");
 }
 
 int main(int argc, char** argv) {
@@ -112,7 +117,7 @@ int main(int argc, char** argv) {
 	doArgs(args);
 	auto& arg = args.positional();
 	if(arg.size() == 1) {
-		std::istringstream ss{arg[0].to_string()};
+		std::istringstream ss(arg[0]);
 		ss >> gs;
 	}
 

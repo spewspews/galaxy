@@ -3,20 +3,13 @@
 
 #include <algorithm>
 #include <array>
-#include <experimental/array>
-#include <experimental/optional>
-#include <experimental/string_view>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace flags {
-using std::experimental::make_array;
-using std::experimental::nullopt;
-using std::experimental::optional;
-using std::experimental::string_view;
-using argument_map = std::unordered_map<string_view, optional<string_view>>;
+using argument_map = std::unordered_map<std::string, std::string>;
 
 namespace detail {
 // Non-destructively parses the argv tokens.
@@ -25,29 +18,24 @@ namespace detail {
 // previous option. If there was no previous option, it will be considered a
 // positional argument.
 struct parser {
-	parser(const int argc, char** argv) {
-		for(int i = 1; i < argc; ++i) {
-			churn(argv[i]);
-		}
-		// If the last token was an option, it needs to be drained.
+	parser(const int argc, char** argv) : current_option_{nullptr} {
+		for(int i = 1; i < argc; ++i)
+			arguments_.emplace_back(argv[i]);
+		for(auto& arg : arguments_)
+			churn(arg);
 		flush();
 	}
 	parser& operator=(const parser&) = delete;
 
 	const argument_map& options() const { return options_; }
-	const std::vector<string_view>& positional_arguments() const {
+	const std::vector<std::string>& positional_arguments() const {
 		return positional_arguments_;
 	}
 
   private:
 	// Advance the state machine for the current token.
-	void churn(const string_view& item) {
-		if(item.at(0) == '-') {
-			if(current_option_)
-				on_value(item);
-			on_option(item);
-		} else
-			on_value(item);
+	void churn(std::string& item) {
+		item.at(0) == '-' ? on_option(item) : on_value(item);
 	}
 
 	// Consumes the current option if there is one.
@@ -56,88 +44,83 @@ struct parser {
 			on_value();
 	}
 
-	void on_option(const string_view& option) {
+	void on_option(std::string& option) {
 		// Consume the current_option and reassign it to the new option while
 		// removing all leading dashes.
 		flush();
-		current_option_ = option;
-		current_option_->remove_prefix(current_option_->find_first_not_of('-'));
+		current_option_ = &option;
+		current_option_->erase(0, current_option_->find_first_not_of('-'));
 
 		// Handle a packed argument (--arg_name=value).
 		const auto delimiter = current_option_->find_first_of('=');
-		if(delimiter != string_view::npos) {
-			auto value = *current_option_;
-			value.remove_prefix(delimiter + 1 /* skip '=' */);
-			current_option_->remove_suffix(current_option_->size() - delimiter);
+		if(delimiter != std::string::npos) {
+			auto value = current_option_->substr(delimiter+1, std::string::npos);
+			current_option_->erase(delimiter, std::string::npos);
 			on_value(value);
 		}
 	}
 
-	void on_value(const optional<string_view>& value = nullopt) {
+	void on_value(const std::string& value = "true") {
 		// If there's not an option preceding the value, it's a positional
 		// argument.
 		if(!current_option_) {
-			positional_arguments_.emplace_back(*value);
+			positional_arguments_.push_back(value);
 			return;
 		}
 		// Consume the preceding option and assign its value.
 		options_.emplace(*current_option_, value);
-		current_option_ = nullopt;
+		current_option_ = nullptr;
 	}
 
-	optional<string_view> current_option_;
+	std::string* current_option_;
 	argument_map options_;
-	std::vector<string_view> positional_arguments_;
+	std::vector<std::string> positional_arguments_;
+	std::vector<std::string> arguments_;
 };
 
 // If a key exists, return an optional populated with its value.
-inline optional<string_view> get_value(const argument_map& options,
-                                       const string_view& option) {
+inline bool get_value(std::string& value, const argument_map& options,
+                                       const std::string& option) {
 	const auto it = options.find(option);
-	return it != options.end() ? make_optional(*it->second) : nullopt;
+	if(it == options.end())
+		return false;
+	value = it->second;
+	return true;
 }
 
 // Coerces the string value of the given option into <T>.
 // If the value cannot be properly parsed or the key does not exist, returns
 // nullopt.
 template <class T>
-optional<T> get(const argument_map& options, const string_view& option) {
-	if(const auto view = get_value(options, option)) {
-		T value;
-		if(std::istringstream(view->to_string()) >> value)
-			return value;
+bool get(T& value, const argument_map& options, const std::string& option) {
+	std::string sval;
+	if(get_value(sval, options, option)) {
+		if(std::istringstream(sval) >> value)
+			return true;
 	}
-	return nullopt;
+	return false;
 }
 
 // Since the values are already stored as strings, there's no need to use `>>`.
 template <>
-optional<string_view> get(const argument_map& options,
-                          const string_view& option) {
-	return get_value(options, option);
-}
-
-template <>
-optional<std::string> get(const argument_map& options,
-                          const string_view& option) {
-	if(const auto view = get<string_view>(options, option)) {
-		return view->to_string();
-	}
-	return nullopt;
+bool get(std::string& value, const argument_map& options,
+                          const std::string& option) {
+	return get_value(value, options, option);
 }
 
 // Special case for booleans: if the value is any of the below, the option will
 // be considered falsy. Otherwise, it will be considered truthy just for being
 // present.
-constexpr auto falsities = make_array("0", "n", "no", "f", "false");
-template <>
-optional<bool> get(const argument_map& options, const string_view& option) {
-	if(const auto value = get_value(options, option)) {
+const std::vector<std::string> falsities{"0", "n", "no", "f", "false"};
+
+bool get(const argument_map& options, const std::string& option) {
+	std::string sval;
+	if(get_value(sval, options, option)) {
 		return std::none_of(
 		    falsities.begin(), falsities.end(),
-		    [&value](auto falsity) { return *value == falsity; });
+		    [&sval](auto falsity) { return sval == falsity; });
 	}
-	return nullopt;
+	return false;
 }
 } // namespace detail
 
@@ -145,16 +128,15 @@ struct args {
 	args(const int argc, char** argv) : parser_(argc, argv) {}
 
 	template <class T>
-	optional<T> get(const string_view& option) const {
-		return detail::get<T>(parser_.options(), option);
+	bool get(T& value, const std::string& option) const {
+		return detail::get<T>(value, parser_.options(), option);
 	}
 
-	template <class T>
-	T get(const string_view& option, T&& default_value) const {
-		return get<T>(option).value_or(default_value);
+	bool get(const std::string& option) const {
+		return detail::get(parser_.options(), option);
 	}
 
-	const std::vector<string_view>& positional() const {
+	const std::vector<std::string>& positional() const {
 		return parser_.positional_arguments();
 	}
 

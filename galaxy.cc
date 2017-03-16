@@ -134,14 +134,14 @@ void usage() {
 
 int main(int argc, char** argv) {
 	argv0 = argv[0];
-	const flags::args args(argc, argv);
-	if(args.get<bool>("help", false) || args.get<bool>("h", false))
+	const flags::args args{argc, argv};
+	if(args.get("help") || args.get("h"))
 		usage();
 
 	Galaxy glxy;
 	Simulator sim;
 	UI ui{sim};
-	if(args.get<bool>("i", false)) {
+	if(args.get("i")) {
 		load(glxy, ui, sim, std::cin);
 		glxy.center();
 	}

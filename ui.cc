@@ -33,7 +33,7 @@ void Mouse::update() {
 
 void Mouse::body(Galaxy& g) {
 	Pauser psr{ui_.sim_, 1};
-	auto b = Body{ui_.scale_};
+	Body b(ui_.scale_);
 	b.p = vp;
 	for(;;) {
 		ui_.draw(g);
