@@ -1,6 +1,8 @@
 Galaxy
 =
 
+[![Build Status](https://travis-ci.org/spewspews/galaxy.svg?branch=master)](https://travis-ci.org/spewspews/galaxy)
+
 Galactic n-body simulator using a Barnes-Hut tree. I wrote this originally for Plan 9 in C, this version is in C++ using SDL.
 More documentation is in the man page file galaxy.1, read it with `man -l galaxy.1`
 
