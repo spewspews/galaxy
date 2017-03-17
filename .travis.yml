@@ -3,12 +3,9 @@ script: make
 dist: trusty
 os:
   - linux
-  - osx
 addons:
   apt:
     packages:
       - libsdl2-dev
       - libsdl2-gfx-dev
-before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install sdl2_gfx; fi
 compiler: clang
