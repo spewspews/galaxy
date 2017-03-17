@@ -1,11 +1,9 @@
 language: cpp
+compiler: clang
 script: make
 dist: trusty
-os:
-  - linux
 addons:
   apt:
     packages:
       - libsdl2-dev
       - libsdl2-gfx-dev
-compiler: clang

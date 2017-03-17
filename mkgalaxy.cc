@@ -96,16 +96,20 @@ void doArgs(flags::args& args) {
 	Range r;
 	if(args.get<Range>(r, "d"))
 		d = r;
+	r = {0, 0};
 	if(args.get<Range>(r, "sz"))
 		sz = r;
+	r = {0, 0};
 	if(args.get<Range>(r, "v"))
 		v = r;
+	r = {0, 0};
 	if(args.get<Range>(r, "av"))
 		av = r;
 
 	Vector v;
 	if(args.get<Vector>(v, "gv"))
 		gv = v;
+	v = {0,0};
 	if(args.get<Vector>(v, "o"))
 		o = v;
 
