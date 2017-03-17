@@ -1,7 +1,14 @@
 language: cpp
 script: make
 dist: trusty
+os:
+  - linux
+  - osx
+addons:
+  apt:
+    packages:
+      - libsdl2-dev
+      - libsdl2-gfx-dev
 before_install:
-  - sudo apt-get install libsdl2-dev
-  - sudo apt-get install libsdl2-gfx-dev
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install sdl2_gfx; fi
 compiler: clang
