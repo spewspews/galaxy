@@ -56,17 +56,16 @@ struct Quad {
 
 struct BHTree {
 	BHTree() : quads_{5}, size_{quads_.size()}, ε_{500}, G_{1}, θ_{1} {};
-	void calcforces(Galaxy&);
+	void insert(Galaxy&);
 	void calcforce(Body&);
 
   private:
 	std::vector<Quad> quads_;
 	QB root_;
 	size_t i_, size_;
-	double ε_, G_, θ_;
+	double ε_, G_, θ_, limit_;
 
 	bool insert(const Body&, double);
-	void insert(Galaxy&);
 	Quad* getQuad(const Body&);
 	void calcforce(Body&, QB, double);
 	void resize() {

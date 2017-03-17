@@ -42,6 +42,12 @@ void BHTree::calcforce(Body& b, QB qb, double size) {
 	}
 }
 
+void BHTree::calcforce(Body& b) {
+	b.a = b.newa;
+	b.newa = {0, 0};
+	calcforce(b, root_, limit_);
+}
+
 bool BHTree::insert(const Body& nb, double size) {
 	if(root_.t == QB::Type::empty) {
 		root_.t = QB::Type::body;
@@ -82,6 +88,7 @@ bool BHTree::insert(const Body& nb, double size) {
 }
 
 void BHTree::insert(Galaxy& g) {
+	limit_ = g.limit;
 Again:
 	root_.t = QB::Type::empty;
 	i_ = 0;
@@ -90,14 +97,5 @@ Again:
 			resize();
 			goto Again;
 		}
-	}
-}
-
-void BHTree::calcforces(Galaxy& g) {
-	insert(g);
-	for(auto& b : g.bodies) {
-		b.a = b.newa;
-		b.newa = Vector{0, 0};
-		calcforce(b, root_, g.limit);
 	}
 }

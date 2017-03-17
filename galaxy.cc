@@ -73,8 +73,13 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 			paused_ = false;
 			cvpd_.notify_one();
 		}
+
 		ui.draw(g);
-		tree.calcforces(g);
+
+		tree.insert(g);
+		for(auto& b : g.bodies)
+			tree.calcforce(b);
+
 		for(auto& b : g.bodies) {
 			b.p += b.v * dt + b.a * dt² / 2;
 			b.v += (b.a + b.newa) * dt / 2;
