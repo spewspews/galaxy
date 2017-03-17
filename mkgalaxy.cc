@@ -5,7 +5,7 @@ static constexpr double M_PI2 = 6.28318530718e0;
 
 class RandGen {
 	std::default_random_engine eng;
-	unsigned long getSeed() {
+	unsigned int getSeed() {
 		auto now = std::chrono::system_clock::now();
 		auto time = now.time_since_epoch();
 		auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(time);

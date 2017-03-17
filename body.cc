@@ -88,15 +88,6 @@ Vector& Vector::operator/=(double f) {
 	return *this;
 }
 
-void Galaxy::checkLimit(const Vector& v) {
-	auto f = fabs(v.x);
-	if(f > limit / 2)
-		limit = f * 2;
-	f = fabs(v.y);
-	if(f > limit / 2)
-		limit = f * 2;
-}
-
 Vector Galaxy::center() {
 	Vector gc, gcv;
 	double mass = 0;
