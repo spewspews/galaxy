@@ -45,7 +45,7 @@ void Simulator::pause(int id) {
 	if(paused_)
 		return;
 	pause_ = true;
-	std::unique_lock<std::mutex> lk{mupd_};
+	std::unique_lock<std::mutex> lk(mupd_);
 	while(!paused_)
 		cvpd_.wait(lk);
 }
@@ -56,7 +56,7 @@ void Simulator::unpause(int id) {
 	pid_ = -1;
 	pause_ = false;
 	cvp_.notify_one();
-	std::unique_lock<std::mutex> lk{mupd_};
+	std::unique_lock<std::mutex> lk(mupd_);
 	while(paused_)
 		cvpd_.wait(lk);
 }
@@ -67,7 +67,7 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 		if(pause_) {
 			paused_ = true;
 			cvpd_.notify_one();
-			std::unique_lock<std::mutex> lk{mup_};
+			std::unique_lock<std::mutex> lk(mup_);
 			while(pause_)
 				cvp_.wait(lk);
 			paused_ = false;
@@ -134,7 +134,7 @@ void usage() {
 
 int main(int argc, char** argv) {
 	argv0 = argv[0];
-	const flags::args args{argc, argv};
+	const flags::args args(argc, argv);
 	if(args.get("help") || args.get("h"))
 		usage();
 

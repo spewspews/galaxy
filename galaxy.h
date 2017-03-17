@@ -55,9 +55,9 @@ struct Quad {
 };
 
 struct BHTree {
-  public:
 	BHTree() : quads_{5}, size_{quads_.size()}, ε_{500}, G_{1}, θ_{1} {};
 	void calcforces(Galaxy&);
+	void calcforce(Body&);
 
   private:
 	std::vector<Quad> quads_;
@@ -68,7 +68,7 @@ struct BHTree {
 	bool insert(const Body&, double);
 	void insert(Galaxy&);
 	Quad* getQuad(const Body&);
-	void calcforces(Body&, QB, double);
+	void calcforce(Body&, QB, double);
 	void resize() {
 		size_ *= 2;
 		if(size_ > 10000000) {

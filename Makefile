@@ -16,6 +16,6 @@ man:	galaxy.1
 	cp $< /usr/local/share/man/man1/$<
 
 clean:
-	rm -f *.o galaxy mkgalaxy core.*
+	rm -f *.o galaxy mkgalaxy core.* perf.data
 
 .PHONY: clean all man install

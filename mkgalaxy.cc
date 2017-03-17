@@ -93,25 +93,13 @@ void doArgs(flags::args& args) {
 	if(args.get("i"))
 		load(old, std::cin);
 
-	Range r;
-	if(args.get<Range>(r, "d"))
-		d = r;
-	r = {0, 0};
-	if(args.get<Range>(r, "sz"))
-		sz = r;
-	r = {0, 0};
-	if(args.get<Range>(r, "v"))
-		v = r;
-	r = {0, 0};
-	if(args.get<Range>(r, "av"))
-		av = r;
+	args.get<Range>(d, "d", {100, 0});
+	args.get<Range>(sz, "sz", {25, 0});
+	args.get<Range>(v, "v");
+	args.get<Range>(av, "av");
 
-	Vector v;
-	if(args.get<Vector>(v, "gv"))
-		gv = v;
-	v = {0,0};
-	if(args.get<Vector>(v, "o"))
-		o = v;
+	args.get<Vector>(o, "o");
+	args.get<Vector>(gv, "gv");
 
 	c = !args.get("sq");
 }

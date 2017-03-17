@@ -10,7 +10,7 @@ Quad* BHTree::getQuad(const Body& b) {
 	return &q;
 }
 
-void BHTree::calcforces(Body& b, QB qb, double size) {
+void BHTree::calcforce(Body& b, QB qb, double size) {
 	for(;;) {
 		Vector d;
 		double h;
@@ -33,11 +33,11 @@ void BHTree::calcforces(Body& b, QB qb, double size) {
 				return;
 			}
 			size /= 2;
-			calcforces(b, qb.q->c[0], size);
-			calcforces(b, qb.q->c[1], size);
-			calcforces(b, qb.q->c[2], size);
+			calcforce(b, qb.q->c[0], size);
+			calcforce(b, qb.q->c[1], size);
+			calcforce(b, qb.q->c[2], size);
 			qb = qb.q->c[3];
-			break; /* calcforces(b, q->q[3], size); */
+			break; /* calcforce(b, q->q[3], size); */
 		}
 	}
 }
@@ -98,6 +98,6 @@ void BHTree::calcforces(Galaxy& g) {
 	for(auto& b : g.bodies) {
 		b.a = b.newa;
 		b.newa = Vector{0, 0};
-		calcforces(b, root_, g.limit);
+		calcforce(b, root_, g.limit);
 	}
 }

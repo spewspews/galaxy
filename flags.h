@@ -132,6 +132,22 @@ struct args {
 		return detail::get<T>(value, parser_.options(), option);
 	}
 
+	template <class T>
+	bool get(T& value, const std::string& option, const T& def) const {
+		if(detail::get<T>(value, parser_.options(), option))
+			return true;
+		value = def;
+		return false;
+	}
+
+	template <class T>
+	bool get(T& value, const std::string& option, const T&& def) const {
+		if(detail::get<T>(value, parser_.options(), option))
+			return true;
+		value = def;
+		return false;
+	}
+
 	bool get(const std::string& option) const {
 		return detail::get(parser_.options(), option);
 	}
