@@ -1,5 +1,5 @@
 #include "galaxy.h"
-#include "flags.h"
+#include "args.h"
 
 std::ostream& operator<<(std::ostream& os, const Point& p) {
 	os << p.x << "," << p.y;
@@ -88,6 +88,10 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 	}
 }
 
+void Simulator::calcLoop(Galaxy& g, int n) {
+	
+}
+
 void Simulator::simulate(Galaxy& g, UI& ui) {
 	t_ = std::thread{[this, &g, &ui] { simLoop(g, ui); }};
 }
@@ -133,23 +137,31 @@ void shutdown(int c) {
 char* argv0;
 
 void usage() {
-	std::cerr << "Usage: " << argv0 << " [-i]\n";
+	std::cerr << "Usage: " << argv0 << " [-i] [-n]\n";
 	exit(1);
 }
 
 int main(int argc, char** argv) {
 	argv0 = argv[0];
-	const flags::args args(argc, argv);
+	args::args args(argc, argv);
 	if(args.get("help") || args.get("h"))
 		usage();
 
-	Galaxy glxy;
-	Simulator sim;
+	int n;
+	args.get<int>(n, "n", 0);
+
+	Simulator sim(n);;
+
 	UI ui{sim};
+
+	Galaxy glxy;
 	if(args.get("i")) {
 		load(glxy, ui, sim, std::cin);
 		glxy.center();
 	}
+
+	if(args.flags().size() > 0)
+		usage();
 
 	sim.simulate(glxy, ui);
 	ui.loop(glxy);

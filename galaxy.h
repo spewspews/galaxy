@@ -83,8 +83,8 @@ struct UI;
 struct Simulator {
 	double dt, dt²;
 
-	Simulator()
-	    : dt{0.1}, dt²{dt * dt}, paused_{false}, pause_{false}, pid_{-1} {};
+	Simulator(int nthread)
+	    : dt{0.1}, dt²{dt * dt}, paused_{false}, pause_{false}, running_{0}, pid_{-1}, nthread_{nthread} {};
 
 	void simulate(Galaxy& g, UI& ui);
 	void pause(int);
@@ -92,12 +92,13 @@ struct Simulator {
 	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
 
   private:
-	std::atomic_bool paused_, pause_;
+	std::atomic_bool paused_, pause_, running_;
 	std::condition_variable cvp_, cvpd_;
 	std::mutex mup_, mupd_;
 	std::thread t_;
-	int pid_;
-	void simLoop(Galaxy& g, UI& ui);
+	int pid_, nthread_;
+	void simLoop(Galaxy&, UI&);
+	void calcLoop(Galaxy&, int);
 };
 
 struct Pauser {

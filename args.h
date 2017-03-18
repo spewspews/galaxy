@@ -1,15 +1,15 @@
-#ifndef FLAGS_H_
-#define FLAGS_H_
+#ifndef ARGS_H_
+#define ARGS_H_
 
 #include <algorithm>
 #include <array>
 #include <sstream>
 #include <string>
-#include <unordered_map>
+#include <map>
 #include <vector>
 
-namespace flags {
-using argument_map = std::unordered_map<std::string, std::string>;
+namespace args {
+using argument_map = std::map<std::string, std::string>;
 
 namespace detail {
 // Non-destructively parses the argv tokens.
@@ -27,7 +27,7 @@ struct parser {
 	}
 	parser& operator=(const parser&) = delete;
 
-	const argument_map& options() const { return options_; }
+	argument_map& options() { return options_; }
 	const std::vector<std::string>& positional_arguments() const {
 		return positional_arguments_;
 	}
@@ -78,13 +78,13 @@ struct parser {
 	std::vector<std::string> arguments_;
 };
 
-// If a key exists, return an optional populated with its value.
-inline bool get_value(std::string& value, const argument_map& options,
+inline bool get_value(std::string& value, argument_map& options,
                                        const std::string& option) {
 	const auto it = options.find(option);
 	if(it == options.end())
 		return false;
 	value = it->second;
+	options.erase(it);
 	return true;
 }
 
@@ -92,7 +92,7 @@ inline bool get_value(std::string& value, const argument_map& options,
 // If the value cannot be properly parsed or the key does not exist, returns
 // nullopt.
 template <class T>
-bool get(T& value, const argument_map& options, const std::string& option) {
+bool get(T& value, argument_map& options, const std::string& option) {
 	std::string sval;
 	if(get_value(sval, options, option)) {
 		if(std::istringstream(sval) >> value)
@@ -103,7 +103,7 @@ bool get(T& value, const argument_map& options, const std::string& option) {
 
 // Since the values are already stored as strings, there's no need to use `>>`.
 template <>
-bool get(std::string& value, const argument_map& options,
+bool get(std::string& value, argument_map& options,
                           const std::string& option) {
 	return get_value(value, options, option);
 }
@@ -113,7 +113,7 @@ bool get(std::string& value, const argument_map& options,
 // present.
 const std::vector<std::string> falsities{"0", "n", "no", "f", "false"};
 
-bool get(const argument_map& options, const std::string& option) {
+bool get(argument_map& options, const std::string& option) {
 	std::string sval;
 	if(get_value(sval, options, option)) {
 		return std::none_of(
@@ -128,12 +128,12 @@ struct args {
 	args(const int argc, char** argv) : parser_(argc, argv) {}
 
 	template <class T>
-	bool get(T& value, const std::string& option) const {
+	bool get(T& value, const std::string& option) {
 		return detail::get<T>(value, parser_.options(), option);
 	}
 
 	template <class T>
-	bool get(T& value, const std::string& option, const T& def) const {
+	bool get(T& value, const std::string& option, const T& def) {
 		if(detail::get<T>(value, parser_.options(), option))
 			return true;
 		value = def;
@@ -141,15 +141,19 @@ struct args {
 	}
 
 	template <class T>
-	bool get(T& value, const std::string& option, const T&& def) const {
+	bool get(T& value, const std::string& option, const T&& def) {
 		if(detail::get<T>(value, parser_.options(), option))
 			return true;
 		value = def;
 		return false;
 	}
 
-	bool get(const std::string& option) const {
+	bool get(const std::string& option) {
 		return detail::get(parser_.options(), option);
+	}
+
+	const argument_map& flags() {
+		return parser_.options();
 	}
 
 	const std::vector<std::string>& positional() const {
@@ -157,9 +161,9 @@ struct args {
 	}
 
   private:
-	const detail::parser parser_;
+	detail::parser parser_;
 };
 
-} // namespace flags
+} // namespace args
 
-#endif // FLAGS_H_
+#endif // ARGS_H_

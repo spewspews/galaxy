@@ -1,5 +1,5 @@
 #include "body.h"
-#include "flags.h"
+#include "args.h"
 
 static constexpr double M_PI2 = 6.28318530718e0;
 
@@ -89,7 +89,7 @@ void load(Galaxy& g, std::istream& is) {
 	}
 }
 
-void doArgs(flags::args& args) {
+void doArgs(args::args& args) {
 	if(args.get("i"))
 		load(old, std::cin);
 
@@ -104,9 +104,19 @@ void doArgs(flags::args& args) {
 	c = !args.get("sq");
 }
 
+char* argv0;
+
+void usage() {
+	std::cerr << "Usage: " << argv0 << " [-d dist[+r]]\n";
+	exit(1);
+}
+
 int main(int argc, char** argv) {
-	flags::args args{argc, argv};
+	argv0 = argv[0];
+	args::args args{argc, argv};
 	doArgs(args);
+	if(args.flags().size() > 0)
+		usage();
 	auto& arg = args.positional();
 	if(arg.size() == 1) {
 		std::istringstream ss(arg[0]);
