@@ -124,8 +124,8 @@ bool get(argument_map& options, const std::string& option) {
 }
 } // namespace detail
 
-struct args {
-	args(const int argc, char** argv) : parser_(argc, argv) {}
+struct Args {
+	Args(const int argc, char** argv) : parser_(argc, argv) {}
 
 	template <class T>
 	bool get(T& value, const std::string& option) {

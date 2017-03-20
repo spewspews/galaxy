@@ -95,7 +95,6 @@ struct Simulator {
 	std::atomic_bool paused_, pause_, running_;
 	std::condition_variable cvp_, cvpd_;
 	std::mutex mup_, mupd_;
-	std::thread t_;
 	int pid_, nthread_;
 	void simLoop(Galaxy&, UI&);
 	void calcLoop(Galaxy&, int);

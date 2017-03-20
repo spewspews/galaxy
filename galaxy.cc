@@ -89,11 +89,11 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 }
 
 void Simulator::calcLoop(Galaxy& g, int n) {
-	
 }
 
 void Simulator::simulate(Galaxy& g, UI& ui) {
-	t_ = std::thread{[this, &g, &ui] { simLoop(g, ui); }};
+	auto t = std::thread([this, &g, &ui] { simLoop(g, ui); });
+	t.detach();
 }
 
 void load(Galaxy& g, UI& ui, Simulator& sim, std::istream& is) {
@@ -143,7 +143,7 @@ void usage() {
 
 int main(int argc, char** argv) {
 	argv0 = argv[0];
-	args::args args(argc, argv);
+	args::Args args(argc, argv);
 	if(args.get("help") || args.get("h"))
 		usage();
 

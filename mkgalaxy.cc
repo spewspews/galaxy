@@ -89,7 +89,7 @@ void load(Galaxy& g, std::istream& is) {
 	}
 }
 
-void doArgs(args::args& args) {
+void doArgs(args::Args& args) {
 	if(args.get("i"))
 		load(old, std::cin);
 
@@ -113,7 +113,7 @@ void usage() {
 
 int main(int argc, char** argv) {
 	argv0 = argv[0];
-	args::args args{argc, argv};
+	args::Args args{argc, argv};
 	doArgs(args);
 	if(args.flags().size() > 0)
 		usage();
