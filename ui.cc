@@ -26,15 +26,15 @@ void Mouse::update() {
 	SDL_RenderPresent(ui_.renderer_);
 	SDL_Delay(5);
 	SDL_PumpEvents();
-	buttons_ = SDL_GetMouseState(&p.x, &p.y);
-	vp = ui_.toVector(p);
+	buttons_ = SDL_GetMouseState(&p_[0], &p_[1]);
+	vp_ = ui_.toVector(p_);
 	SDL_FlushEvent(SDL_MOUSEBUTTONDOWN);
 }
 
 void Mouse::body(Galaxy& g) {
 	Pauser psr{ui_.sim_, 1};
 	Body b(ui_.scale_);
-	b.p = vp;
+	b.p = vp_;
 	for(;;) {
 		ui_.draw(g);
 		ui_.draw(b);
@@ -47,7 +47,7 @@ void Mouse::body(Galaxy& g) {
 		else if(buttons_ == (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
 			setVel(b, g);
 		else
-			b.p = vp;
+			b.p = vp_;
 	}
 	g.bodies.push_back(b);
 	ui_.orig_ = ui_.toPoint(g.center());
@@ -56,9 +56,9 @@ void Mouse::body(Galaxy& g) {
 }
 
 void Mouse::setSize(Body& b, const Galaxy& g) {
-	auto oldp = p;
+	auto oldp = p_;
 	for(;;) {
-		auto d = vp - b.p;
+		auto d = vp_ - b.p;
 		auto h = std::hypot(d.x, d.y);
 		b.size = h == 0 ? 2.0 * ui_.scale_ : h;
 		b.mass = b.size * b.size * b.size;
@@ -69,13 +69,13 @@ void Mouse::setSize(Body& b, const Galaxy& g) {
 		if(buttons_ != (SDL_BUTTON_LMASK | SDL_BUTTON_MMASK))
 			break;
 	}
-	SDL_WarpMouseInWindow(nullptr, oldp.x, oldp.y);
+	SDL_WarpMouseInWindow(nullptr, oldp[0], oldp[1]);
 }
 
 void Mouse::setVel(Body& b, const Galaxy& g) {
-	auto oldp = p;
+	auto oldp = p_;
 	for(;;) {
-		b.v = (vp - b.p) / vscale;
+		b.v = (vp_ - b.p) / vscale;
 		ui_.draw(g);
 		ui_.draw(b);
 		ui_.draw(b, b.v, vscale);
@@ -83,51 +83,50 @@ void Mouse::setVel(Body& b, const Galaxy& g) {
 		if(buttons_ != (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
 			break;
 	}
-	SDL_WarpMouseInWindow(nullptr, oldp.x, oldp.y);
+	SDL_WarpMouseInWindow(nullptr, oldp[0], oldp[1]);
 }
 
 void Mouse::zoom(const Galaxy& g) {
-	auto op = p;
+	auto oldp = p_;
 	auto oscale = ui_.scale_;
-	Point sc;
-	SDL_GetWindowSize(ui_.screen_, &sc.x, &sc.y);
+	Point sc(2);
+	SDL_GetWindowSize(ui_.screen_, &sc[0], &sc[1]);
 	sc /= 2;
 	for(;;) {
 		update();
 		if(buttons_ != SDL_BUTTON_MMASK)
 			break;
-		auto d = p - op;
-		auto z = tanh((double)d.y / 200) + 1;
+		auto d = p_ - oldp;
+		auto z = tanh((double)d[1] / 200) + 1;
 		auto gsc = ui_.toVector(sc);
 		Pauser psr{ui_.sim_, 0};
 		ui_.scale_ = z * oscale;
-		auto off = ui_.toPoint(gsc) - sc;
-		ui_.orig_ -= off;
+		ui_.orig_ -= ui_.toPoint(gsc) - sc;
 		ui_.draw(g);
 	}
 }
 
 void Mouse::move(const Galaxy& g) {
-	auto oldp = p;
+	auto oldp = p_;
 	for(;;) {
 		update();
 		if(buttons_ != SDL_BUTTON_RMASK)
 			break;
 		Pauser psr{ui_.sim_, 0};
-		ui_.orig_ += p - oldp;
-		oldp = p;
+		ui_.orig_ += p_ - oldp;
+		oldp = p_;
 		ui_.draw(g);
 	}
 }
 
 Vector UI::toVector(const Point& p) const {
-	return Vector{static_cast<double>(p.x - orig_.x) * scale_,
-	              static_cast<double>(p.y - orig_.y) * scale_};
+	return Vector{static_cast<double>(p[0] - orig_[0]) * scale_,
+	              static_cast<double>(p[1] - orig_[1]) * scale_};
 }
 
 Point UI::toPoint(const Vector& v) const {
-	return Point{static_cast<int>(v.x / scale_) + orig_.x,
-	             static_cast<int>(v.y / scale_) + orig_.y};
+	return Point{static_cast<int>(v.x / scale_) + orig_[0],
+	             static_cast<int>(v.y / scale_) + orig_[1]};
 }
 
 void UI::draw(const Galaxy& g) const {
@@ -147,7 +146,7 @@ void UI::draw(const Body& b) const {
 	auto pos = toPoint(b.p);
 	auto drawSize = static_cast<int>(b.size / scale_);
 
-	auto err = filledCircleRGBA(renderer_, pos.x, pos.y, drawSize, b.r, b.g,
+	auto err = filledCircleRGBA(renderer_, pos[0], pos[1], drawSize, b.r, b.g,
 	                            b.b, 0xff);
 	if(err) {
 		std::cerr << "Could not draw circle: " << SDL_GetError() << "\n";
@@ -158,7 +157,7 @@ void UI::draw(const Body& b) const {
 void UI::draw(const Body& b, const Vector& e, double scale) const {
 	auto spos = toPoint(b.p);
 	auto epos = toPoint(e * scale + b.p);
-	auto err = aalineRGBA(renderer_, spos.x, spos.y, epos.x, epos.y, b.r, b.g,
+	auto err = aalineRGBA(renderer_, spos[0], spos[1], epos[0], epos[1], b.r, b.g,
 	                      b.b, 0xff);
 	if(err == -1) {
 		std::cerr << "Could not draw vector: " << SDL_GetError();
@@ -186,7 +185,7 @@ void UI::init() {
 		shutdown(1);
 	}
 
-	SDL_GetWindowSize(screen_, &orig_.x, &orig_.y);
+	SDL_GetWindowSize(screen_, &orig_[0], &orig_[1]);
 	orig_ /= 2;
 }
 
@@ -194,7 +193,7 @@ void UI::center() {
 	Pauser psr{sim_, 0};
 	SDL_PumpEvents();
 	SDL_FlushEvent(SDL_WINDOWEVENT_RESIZED);
-	SDL_GetWindowSize(screen_, &orig_.x, &orig_.y);
+	SDL_GetWindowSize(screen_, &orig_[0], &orig_[1]);
 	orig_ /= 2;
 }
 

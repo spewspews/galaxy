@@ -1,43 +1,6 @@
 #include "galaxy.h"
 #include "args.h"
 
-std::ostream& operator<<(std::ostream& os, const Point& p) {
-	os << p.x << "," << p.y;
-	return os;
-}
-
-std::istream& operator>>(std::istream& is, Point& p) {
-	char c;
-	is >> p.x >> c >> p.y;
-	if(c != ',')
-		is.setstate(std::ios::failbit);
-	return is;
-}
-
-Point& Point::operator=(const Point& p) {
-	x = p.x;
-	y = p.y;
-	return *this;
-}
-
-Point& Point::operator/=(int s) {
-	x /= s;
-	y /= s;
-	return *this;
-}
-
-Point& Point::operator+=(const Point& p) {
-	x += p.x;
-	y += p.y;
-	return *this;
-}
-
-Point& Point::operator-=(const Point& p) {
-	x -= p.x;
-	y -= p.y;
-	return *this;
-}
-
 void Simulator::pause(int id) {
 	if(pid_ != -1 && pid_ > id)
 		return;
@@ -101,6 +64,7 @@ void load(Galaxy& g, UI& ui, Simulator& sim, std::istream& is) {
 		ReadCmd rc;
 		is >> rc;
 		Body b;
+		char c;
 		switch(rc) {
 		case ReadCmd::body:
 			if(is >> b) {
@@ -109,7 +73,7 @@ void load(Galaxy& g, UI& ui, Simulator& sim, std::istream& is) {
 			}
 			break;
 		case ReadCmd::orig:
-			is >> ui.orig_;
+			is >> ui.orig_[0] >> c >> ui.orig_[1];
 			break;
 		case ReadCmd::dt:
 			is >> sim.dt;
@@ -120,10 +84,8 @@ void load(Galaxy& g, UI& ui, Simulator& sim, std::istream& is) {
 			break;
 		case ReadCmd::grav:
 		case ReadCmd::nocmd:
-			if(is.eof()) {
-				is.clear();
+			if(is.eof())
 				return;
-			}
 			break;
 		}
 	}
@@ -148,7 +110,7 @@ int main(int argc, char** argv) {
 		usage();
 
 	int n;
-	args.get<int>(n, "n", 0);
+	args.get(n, "n", 0);
 
 	Simulator sim(n);;
 
