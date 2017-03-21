@@ -1,19 +1,6 @@
 #include "galaxy.h"
 #include "args.h"
 
-std::ostream& operator<<(std::ostream& os, const Point& p) {
-	os << p.x << "," << p.y;
-	return os;
-}
-
-std::istream& operator>>(std::istream& is, Point& p) {
-	char c;
-	is >> p.x >> c >> p.y;
-	if(c != ',')
-		is.setstate(std::ios::failbit);
-	return is;
-}
-
 void Simulator::pause(int id) {
 	if(pid_ != -1 && pid_ > id)
 		return;

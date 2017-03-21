@@ -35,19 +35,6 @@ std::istream& operator>>(std::istream& is, ReadCmd& rc) {
 	return is;
 }
 
-std::ostream& operator<<(std::ostream& os, const Vector& v) {
-	os << v.x << "," << v.y;
-	return os;
-}
-
-std::istream& operator>>(std::istream& is, Vector& v) {
-	char c;
-	is >> v.x >> c >> v.y;
-	if(c != ',')
-		is.setstate(std::ios::failbit);
-	return is;
-}
-
 uint32_t Body::getRandomColor() {
 	static RandCol randCol;
 	return randCol();

@@ -18,49 +18,62 @@ enum struct ReadCmd { body, orig, dt, scale, grav, nocmd };
 
 std::istream& operator>>(std::istream&, ReadCmd&);
 
-struct Vector {
-	double x, y;
+template<typename T>
+struct Linear {
+	T x, y;
 
-	Vector() : x{0}, y{0} {};
-	Vector(double a, double b) : x{a}, y{b} {};
+	Linear() : x{0}, y{0} {};
+	Linear(T a, T b) : x{a}, y{b} {};
 
-	static Vector polar(double ang, double mag) {
+	static Linear polar(T ang, T mag) {
 		return {std::cos(ang) * mag, std::sin(ang) * mag};
 	}
 
-	Vector operator+(const Vector& v) const { return {x + v.x, y + v.y}; };
-	Vector operator-(const Vector& v) const { return {x - v.x, y - v.y}; }
+	Linear operator+(const Linear& v) const { return {x + v.x, y + v.y}; };
+	Linear operator-(const Linear& v) const { return {x - v.x, y - v.y}; }
 
-	Vector operator*(double m) const { return {x * m, y * m}; }
-	Vector operator/(double m) const { return {x / m, y / m}; }
+	Linear operator*(double m) const { return {x * m, y * m}; }
+	Linear operator/(double m) const { return {x / m, y / m}; }
 
-	Vector& operator=(const Vector& p) {
+	Linear& operator=(const Linear& p) {
 		x = p.x;
 		y = p.y;
 		return *this;
 	}
 
-	Vector& operator+=(const Vector& p) {
+	Linear& operator+=(const Linear& p) {
 		x += p.x;
 		y += p.y;
 		return *this;
 	}
 
-	Vector& operator-=(const Vector& p) {
+	Linear& operator-=(const Linear& p) {
 		x -= p.x;
 		y -= p.y;
 		return *this;
 	}
 
-	Vector& operator/=(double f) {
+	Linear& operator/=(T f) {
 		x /= f;
 		y /= f;
 		return *this;
 	}
 
-	friend std::ostream& operator<<(std::ostream&, const Vector&);
-	friend std::istream& operator>>(std::istream&, Vector&);
+	friend std::ostream& operator<<(std::ostream& os, const Linear& l) {
+		os << l.x << "," << l.y;
+		return os;
+	}
+
+	friend std::istream& operator>>(std::istream& is, Linear& l) {
+		char c;
+		is >> l.x >> c >> l.y;
+		if(c != ',')
+			is.setstate(std::ios::failbit);
+		return is;
+	}
 };
+
+using Vector = Linear<double>;
 
 struct Body {
 	Vector p, v, a, newa;
