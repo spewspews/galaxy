@@ -18,7 +18,7 @@ enum struct ReadCmd { body, orig, dt, scale, grav, nocmd };
 
 std::istream& operator>>(std::istream&, ReadCmd&);
 
-template<typename T>
+template <typename T>
 struct Linear {
 	T x, y;
 

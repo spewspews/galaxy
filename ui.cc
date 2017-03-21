@@ -121,13 +121,13 @@ void Mouse::move(const Galaxy& g) {
 }
 
 Vector UI::toVector(const Point& p) const {
-	return Vector{static_cast<double>(p.x - orig_.x) * scale_,
-	              static_cast<double>(p.y - orig_.y) * scale_};
+	return {static_cast<double>(p.x - orig_.x) * scale_,
+	        static_cast<double>(p.y - orig_.y) * scale_};
 }
 
 Point UI::toPoint(const Vector& v) const {
-	return Point{static_cast<int>(v.x / scale_) + orig_.x,
-	             static_cast<int>(v.y / scale_) + orig_.y};
+	return {static_cast<int>(v.x / scale_) + orig_.x,
+	        static_cast<int>(v.y / scale_) + orig_.y};
 }
 
 void UI::draw(const Galaxy& g) const {
@@ -149,9 +149,9 @@ void UI::draw(const Body& b) const {
 
 	auto err = filledCircleRGBA(renderer_, pos.x, pos.y, drawSize, b.r, b.g,
 	                            b.b, 0xff);
-	if(err) {
+	if(err == -1) {
 		std::cerr << "Could not draw circle: " << SDL_GetError() << "\n";
-		exit(1);
+		shutdown(1);
 	}
 }
 
@@ -162,7 +162,7 @@ void UI::draw(const Body& b, const Vector& e, double scale) const {
 	                      b.b, 0xff);
 	if(err == -1) {
 		std::cerr << "Could not draw vector: " << SDL_GetError();
-		exit(1);
+		shutdown(1);
 	}
 }
 

@@ -64,7 +64,8 @@ struct Simulator {
 	double dt, dt²;
 
 	Simulator(int nthread)
-	    : dt{0.1}, dt²{dt * dt}, paused_{false}, pause_{false}, running_{0}, pid_{-1}, nthread_{nthread} {};
+	    : dt{0.1}, dt²{dt * dt}, paused_{false}, pause_{false}, running_{0},
+	      pid_{-1}, nthread_{nthread} {};
 
 	void simulate(Galaxy& g, UI& ui);
 	void pause(int);

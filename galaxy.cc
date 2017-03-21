@@ -51,8 +51,7 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 	}
 }
 
-void Simulator::calcLoop(Galaxy& g, int n) {
-}
+void Simulator::calcLoop(Galaxy& g, int n) {}
 
 void Simulator::simulate(Galaxy& g, UI& ui) {
 	auto t = std::thread([this, &g, &ui] { simLoop(g, ui); });
@@ -113,9 +112,8 @@ int main(int argc, char** argv) {
 	int n;
 	args.get<int>(n, "n", 0);
 
-	Simulator sim(n);;
-
-	UI ui{sim};
+	Simulator sim(n);
+	UI ui(sim);
 
 	Galaxy glxy;
 	if(args.get("i")) {

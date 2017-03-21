@@ -3,9 +3,9 @@
 
 #include <algorithm>
 #include <array>
+#include <map>
 #include <sstream>
 #include <string>
-#include <map>
 #include <vector>
 
 namespace args {
@@ -54,7 +54,8 @@ struct parser {
 		// Handle a packed argument (--arg_name=value).
 		const auto delimiter = current_option_->find_first_of('=');
 		if(delimiter != std::string::npos) {
-			auto value = current_option_->substr(delimiter+1, std::string::npos);
+			auto value =
+			    current_option_->substr(delimiter + 1, std::string::npos);
 			current_option_->erase(delimiter, std::string::npos);
 			on_value(value);
 		}
@@ -79,7 +80,7 @@ struct parser {
 };
 
 inline bool get_value(std::string& value, argument_map& options,
-                                       const std::string& option) {
+                      const std::string& option) {
 	const auto it = options.find(option);
 	if(it == options.end())
 		return false;
@@ -103,8 +104,7 @@ bool get(T& value, argument_map& options, const std::string& option) {
 
 // Since the values are already stored as strings, there's no need to use `>>`.
 template <>
-bool get(std::string& value, argument_map& options,
-                          const std::string& option) {
+bool get(std::string& value, argument_map& options, const std::string& option) {
 	return get_value(value, options, option);
 }
 
@@ -152,9 +152,7 @@ struct Args {
 		return detail::get(parser_.options(), option);
 	}
 
-	const argument_map& flags() {
-		return parser_.options();
-	}
+	const argument_map& flags() { return parser_.options(); }
 
 	const std::vector<std::string>& positional() const {
 		return parser_.positional_arguments();
