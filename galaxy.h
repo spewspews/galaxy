@@ -6,11 +6,30 @@
 #include <condition_variable>
 #include <random>
 #include <thread>
-#include <valarray>
 
 void shutdown(int);
 
-using Point = std::valarray<int>;
+struct Point {
+	int x, y;
+
+	Point() : x{0}, y{0} {}
+	Point(int a, int b) : x{a}, y{b} {}
+
+	Point& operator=(const Point&);
+
+	Point operator+(const Point& p) const { return Point{x + p.x, y + p.y}; }
+	Point operator-(const Point& p) const { return Point{x - p.x, y - p.y}; }
+
+	Point operator/(int s) const { return Point{x / s, y / s}; }
+
+	Point& operator+=(const Point&);
+	Point& operator-=(const Point&);
+
+	Point& operator/=(int);
+
+	friend std::ostream& operator<<(std::ostream&, const Point&);
+	friend std::istream& operator>>(std::istream&, Point&);
+};
 
 struct Quad;
 
@@ -27,6 +46,7 @@ struct Quad {
 	Vector p;
 	double mass;
 	std::array<QB, 4> c;
+	Quad() {}
 	void setPosMass(const Body& b) {
 		p = b.p;
 		mass = b.mass;
@@ -91,12 +111,13 @@ struct Pauser {
 
 struct Mouse {
 	Mouse(UI& ui) : ui_{ui} {}
+	Point p;
+	Vector vp;
+
 	void operator()(Galaxy&);
 	void update();
 
   private:
-	Point p_{0, 0};
-	Vector vp_;
 	Uint32 buttons_;
 	UI& ui_;
 
@@ -127,7 +148,7 @@ struct UI {
 	Simulator& sim_;
 	friend struct Mouse;
 	Mouse mouse_;
-	Point orig_{0, 0};
+	Point orig_;
 	double scale_;
 	SDL_Window* screen_;
 	SDL_Renderer* renderer_;
@@ -139,5 +160,3 @@ struct UI {
 	void init();
 	void keyboard(SDL_Keycode&);
 };
-
-std::ostream& printPoint(std::ostream&, const Point&);
