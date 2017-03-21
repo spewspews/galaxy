@@ -64,30 +64,6 @@ std::istream& operator>>(std::istream& is, Body& b) {
 	return is;
 }
 
-Vector& Vector::operator=(const Vector& p) {
-	x = p.x;
-	y = p.y;
-	return *this;
-}
-
-Vector& Vector::operator+=(const Vector& p) {
-	x += p.x;
-	y += p.y;
-	return *this;
-}
-
-Vector& Vector::operator-=(const Vector& p) {
-	x -= p.x;
-	y -= p.y;
-	return *this;
-}
-
-Vector& Vector::operator/=(double f) {
-	x /= f;
-	y /= f;
-	return *this;
-}
-
 Vector Galaxy::center() {
 	Vector gc, gcv;
 	double mass = 0;

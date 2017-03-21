@@ -28,18 +28,35 @@ struct Vector {
 		return {std::cos(ang) * mag, std::sin(ang) * mag};
 	}
 
-	Vector& operator=(const Vector& v);
-
 	Vector operator+(const Vector& v) const { return {x + v.x, y + v.y}; };
 	Vector operator-(const Vector& v) const { return {x - v.x, y - v.y}; }
-
-	Vector& operator+=(const Vector& v);
-	Vector& operator-=(const Vector& v);
 
 	Vector operator*(double m) const { return {x * m, y * m}; }
 	Vector operator/(double m) const { return {x / m, y / m}; }
 
-	Vector& operator/=(double);
+	Vector& operator=(const Vector& p) {
+		x = p.x;
+		y = p.y;
+		return *this;
+	}
+
+	Vector& operator+=(const Vector& p) {
+		x += p.x;
+		y += p.y;
+		return *this;
+	}
+
+	Vector& operator-=(const Vector& p) {
+		x -= p.x;
+		y -= p.y;
+		return *this;
+	}
+
+	Vector& operator/=(double f) {
+		x /= f;
+		y /= f;
+		return *this;
+	}
 
 	friend std::ostream& operator<<(std::ostream&, const Vector&);
 	friend std::istream& operator>>(std::istream&, Vector&);

@@ -15,17 +15,34 @@ struct Point {
 	Point() : x{0}, y{0} {}
 	Point(int a, int b) : x{a}, y{b} {}
 
-	Point& operator=(const Point&);
+	Point& operator=(const Point& p) {
+		x = p.x;
+		y = p.y;
+		return *this;
+	}
 
 	Point operator+(const Point& p) const { return Point{x + p.x, y + p.y}; }
 	Point operator-(const Point& p) const { return Point{x - p.x, y - p.y}; }
 
 	Point operator/(int s) const { return Point{x / s, y / s}; }
 
-	Point& operator+=(const Point&);
-	Point& operator-=(const Point&);
+	Point& operator/=(int s) {
+		x /= s;
+		y /= s;
+		return *this;
+	}
 
-	Point& operator/=(int);
+	Point& operator+=(const Point& p) {
+		x += p.x;
+		y += p.y;
+		return *this;
+	}
+
+	Point& operator-=(const Point& p) {
+		x -= p.x;
+		y -= p.y;
+		return *this;
+	}
 
 	friend std::ostream& operator<<(std::ostream&, const Point&);
 	friend std::istream& operator>>(std::istream&, Point&);

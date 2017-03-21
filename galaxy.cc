@@ -14,30 +14,6 @@ std::istream& operator>>(std::istream& is, Point& p) {
 	return is;
 }
 
-Point& Point::operator=(const Point& p) {
-	x = p.x;
-	y = p.y;
-	return *this;
-}
-
-Point& Point::operator/=(int s) {
-	x /= s;
-	y /= s;
-	return *this;
-}
-
-Point& Point::operator+=(const Point& p) {
-	x += p.x;
-	y += p.y;
-	return *this;
-}
-
-Point& Point::operator-=(const Point& p) {
-	x -= p.x;
-	y -= p.y;
-	return *this;
-}
-
 void Simulator::pause(int id) {
 	if(pid_ != -1 && pid_ > id)
 		return;
