@@ -24,9 +24,21 @@ void Simulator::unpause(int id) {
 		cvpd_.wait(lk);
 }
 
+void Simulator::stop() {
+	std::cerr << "Simulator stopping\n";
+	stop_ = true;
+	if(!stopped_) {
+		std::unique_lock<std::mutex> lk(mustop_);
+		while(!stopped_)
+			cvstop_.wait(lk);
+	}
+	std::cerr << "Simulator stopped\n";
+}
+
 std::array<std::mutex, 3> mu;
 std::array<std::condition_variable, 3> cv;
 std::array<std::atomic_bool, 3> go;
+std::atomic_bool die;
 std::mutex mudone;
 std::condition_variable cvdone;
 std::atomic_int running;
@@ -37,6 +49,10 @@ void calcLoop(Galaxy& g, BHTree& tree, const int tid) {
 			std::unique_lock<std::mutex> lk(mu[tid]);
 			while(!go[tid])
 				cv[tid].wait(lk);
+		}
+		if(die) {
+			std::cerr << "Calcloop " << tid << " dying\n";
+			return;
 		}
 		go[tid] = false;
 
@@ -49,6 +65,14 @@ void calcLoop(Galaxy& g, BHTree& tree, const int tid) {
 		--running;
 		if(running == 0)
 			cvdone.notify_one();
+	}
+}
+
+void goThreads() {
+	running = 3;
+	for(auto i = 0; i < 3; ++i) {
+		go[i] = true;
+		cv[i].notify_one();
 	}
 }
 
@@ -69,15 +93,20 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 			cvpd_.notify_one();
 		}
 
+		if(stop_) {
+			stopped_ = true;
+			die = true;
+			goThreads();
+			cvstop_.notify_one();
+			std::cerr << "simLoop returning\n";
+			return;
+		}
+
 		ui.draw(g);
 
 		tree.insert(g);
 
-		running = 3;
-		for(auto i = 0; i < 3; ++i) {
-			go[i] = true;
-			cv[i].notify_one();
-		}
+		goThreads();
 
 		auto nbody = g.bodies.size()/4;
 		auto i = g.bodies.begin() + nbody*3;
@@ -136,11 +165,6 @@ void load(Galaxy& g, UI& ui, Simulator& sim, std::istream& is) {
 	}
 }
 
-void shutdown(int c) {
-	SDL_Quit();
-	exit(c);
-}
-
 char* argv0;
 
 void usage() {
@@ -157,6 +181,7 @@ int main(int argc, char** argv) {
 	int n;
 	args.get<int>(n, "n", 0);
 
+try {
 	Simulator sim;
 	UI ui(sim);
 
@@ -171,6 +196,11 @@ int main(int argc, char** argv) {
 
 	sim.simulate(glxy, ui);
 	ui.loop(glxy);
-	std::cerr << "Error: ui loop exited\n";
-	shutdown(1);
+} catch (const std::runtime_error& e) {
+	std::cerr << "Runtime error: " << e.what() << '\n';
+	return 1;
+}
+
+	std::cerr << "Program done\n";
+	return 0;
 }

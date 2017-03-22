@@ -5,9 +5,8 @@
 #include <chrono>
 #include <condition_variable>
 #include <random>
+#include <sstream>
 #include <thread>
-
-void shutdown(int);
 
 using Point = Linear<int>;
 
@@ -61,22 +60,19 @@ struct BHTree {
 struct UI;
 
 struct Simulator {
-	double dt, dt²;
-
-	Simulator()
-	    : dt{0.1}, dt²{dt * dt}, paused_{false}, pause_{false},
-	      pid_{-1} {};
+	double dt{0.1}, dt²{dt*dt};
 
 	void simulate(Galaxy& g, UI& ui);
 	void pause(int);
 	void unpause(int);
+	void stop();
 	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
 
   private:
-	std::atomic_bool paused_, pause_;
-	std::condition_variable cvp_, cvpd_;
-	std::mutex mup_, mupd_;
-	int pid_;
+	std::atomic_bool paused_{false}, pause_{false}, stop_{false}, stopped_{false};
+	std::condition_variable cvp_, cvpd_, cvstop_;
+	std::mutex mup_, mupd_, mustop_;
+	int pid_{-1};
 
 	void simLoop(Galaxy&, UI&);
 };
@@ -119,7 +115,6 @@ struct UI {
 	void draw(const Galaxy&) const;
 	void draw(const Body&) const;
 	void draw(const Body&, const Vector&, double) const;
-	void handleEvents(Galaxy&);
 	void loop(Galaxy&);
 
 	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
@@ -139,5 +134,6 @@ struct UI {
 	Point toPoint(const Vector&) const;
 	void center();
 	void init();
-	void keyboard(SDL_Keycode&);
+	int handleEvents(Galaxy&);
+	int keyboard(SDL_Keycode&);
 };

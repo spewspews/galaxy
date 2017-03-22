@@ -150,8 +150,9 @@ void UI::draw(const Body& b) const {
 	auto err = filledCircleRGBA(renderer_, pos.x, pos.y, drawSize, b.r, b.g,
 	                            b.b, 0xff);
 	if(err == -1) {
-		std::cerr << "Could not draw circle: " << SDL_GetError() << "\n";
-		shutdown(1);
+		std::stringstream ss;
+		ss << "Could not draw circle: " << SDL_GetError();
+		throw std::runtime_error(ss.str());
 	}
 }
 
@@ -161,29 +162,34 @@ void UI::draw(const Body& b, const Vector& e, double scale) const {
 	auto err = aalineRGBA(renderer_, spos.x, spos.y, epos.x, epos.y, b.r, b.g,
 	                      b.b, 0xff);
 	if(err == -1) {
+		std::stringstream ss;
 		std::cerr << "Could not draw vector: " << SDL_GetError();
-		shutdown(1);
+		throw std::runtime_error(ss.str());
 	}
 }
 
 void UI::init() {
 	if(SDL_Init(SDL_INIT_VIDEO) < 0) {
-		std::cerr << "Could not initialize SDL: " << SDL_GetError() << '\n';
-		exit(1);
+		std::stringstream ss;
+		ss << "Could not initialize SDL: " << SDL_GetError();
+		throw std::runtime_error(ss.str());
 	}
+	atexit(SDL_Quit);
 
 	screen_ = SDL_CreateWindow("Galaxy", SDL_WINDOWPOS_UNDEFINED,
 	                           SDL_WINDOWPOS_UNDEFINED, 640, 640,
 	                           SDL_WINDOW_RESIZABLE);
 	if(!screen_) {
-		std::cerr << "Could not create window: " << SDL_GetError() << '\n';
-		shutdown(1);
+		std::stringstream ss;
+		ss << "Could not create window: " << SDL_GetError();
+		throw std::runtime_error(ss.str());
 	}
 
 	renderer_ = SDL_CreateRenderer(screen_, -1, 0);
 	if(!renderer_) {
-		std::cerr << "Could not create renderer: " << SDL_GetError() << '\n';
-		shutdown(1);
+		std::stringstream ss;
+		ss << "Could not create renderer: " << SDL_GetError() << '\n';
+		throw std::runtime_error(ss.str());
 	}
 
 	SDL_GetWindowSize(screen_, &orig_.x, &orig_.y);
@@ -198,7 +204,7 @@ void UI::center() {
 	orig_ /= 2;
 }
 
-void UI::keyboard(SDL_Keycode& kc) {
+int UI::keyboard(SDL_Keycode& kc) {
 	switch(kc) {
 	case SDLK_a:
 		showa_ = !showa_;
@@ -207,8 +213,7 @@ void UI::keyboard(SDL_Keycode& kc) {
 		showv_ = !showv_;
 		break;
 	case SDLK_q:
-		shutdown(0);
-		break;
+		return -1;
 	case SDLK_SPACE:
 		if(paused_) {
 			sim_.unpause(2);
@@ -219,30 +224,35 @@ void UI::keyboard(SDL_Keycode& kc) {
 		}
 		break;
 	}
+	return 0;
 }
 
-void UI::handleEvents(Galaxy& g) {
+int UI::handleEvents(Galaxy& g) {
 	Pauser psr{sim_, 0};
 	SDL_Event e;
 	while(SDL_PollEvent(&e)) {
 		switch(e.type) {
 		case SDL_QUIT:
-			shutdown(0);
-			break;
+			return -1;
 		case SDL_KEYDOWN:
-			keyboard(e.key.keysym.sym);
+			if(keyboard(e.key.keysym.sym) == -1)
+				return -1;
 			break;
 		case SDL_MOUSEBUTTONDOWN:
 			mouse_(g);
 			break;
 		}
 	}
+	return 0;
 }
 
 void UI::loop(Galaxy& g) {
 	center();
 	for(;;) {
-		handleEvents(g);
+		if(handleEvents(g) == -1) {
+			sim_.stop();
+			return;
+		}
 		SDL_Delay(100);
 	}
 }
