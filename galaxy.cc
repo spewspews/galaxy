@@ -24,8 +24,40 @@ void Simulator::unpause(int id) {
 		cvpd_.wait(lk);
 }
 
+std::array<std::mutex, 3> mu;
+std::array<std::condition_variable, 3> cv;
+std::array<std::atomic_bool, 3> go;
+std::mutex mudone;
+std::condition_variable cvdone;
+std::atomic_int running;
+
+void calcLoop(Galaxy& g, BHTree& tree, const int tid) {
+	for(;;) {
+		if(!go[tid]) {
+			std::unique_lock<std::mutex> lk(mu[tid]);
+			while(!go[tid])
+				cv[tid].wait(lk);
+		}
+		go[tid] = false;
+
+		auto nbody = g.bodies.size()/4;
+		auto start = g.bodies.begin() + nbody*tid;
+		auto end = g.bodies.begin() + nbody*(tid+1);
+		for(auto& i = start; i < end; ++i)
+			tree.calcforce(*i);
+
+		--running;
+		if(running == 0)
+			cvdone.notify_one();
+	}
+}
+
 void Simulator::simLoop(Galaxy& g, UI& ui) {
 	BHTree tree;
+	for(auto i = 0; i < 3; i++) {
+		auto t = std::thread([&g, &tree, i] { calcLoop(g, tree, i); });
+		t.detach();
+	}
 	for(;;) {
 		if(pause_) {
 			paused_ = true;
@@ -40,8 +72,23 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 		ui.draw(g);
 
 		tree.insert(g);
-		for(auto& b : g.bodies)
-			tree.calcforce(b);
+
+		running = 3;
+		for(auto i = 0; i < 3; ++i) {
+			go[i] = true;
+			cv[i].notify_one();
+		}
+
+		auto nbody = g.bodies.size()/4;
+		auto i = g.bodies.begin() + nbody*3;
+		while(i < g.bodies.end())
+			tree.calcforce(*i++);
+
+		if(running > 0) {
+			std::unique_lock<std::mutex> lk(mudone);
+			while(running > 0)
+				cvdone.wait(lk);
+		}
 
 		for(auto& b : g.bodies) {
 			b.p += b.v * dt + b.a * dt² / 2;
@@ -50,8 +97,6 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 		}
 	}
 }
-
-void Simulator::calcLoop(Galaxy& g, int n) {}
 
 void Simulator::simulate(Galaxy& g, UI& ui) {
 	auto t = std::thread([this, &g, &ui] { simLoop(g, ui); });
@@ -112,7 +157,7 @@ int main(int argc, char** argv) {
 	int n;
 	args.get<int>(n, "n", 0);
 
-	Simulator sim(n);
+	Simulator sim;
 	UI ui(sim);
 
 	Galaxy glxy;
