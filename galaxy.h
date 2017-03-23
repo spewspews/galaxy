@@ -176,7 +176,7 @@ struct Parallel {
 				return;
 			go[tid] = false;
 	
-			auto nbody = g.bodies.size() / 4;
+			auto nbody = g.bodies.size() / (n+1);
 			auto start = g.bodies.begin() + nbody * tid;
 			auto end = g.bodies.begin() + nbody * (tid + 1);
 			for(auto& i = start; i < end; ++i)
@@ -187,3 +187,5 @@ struct Parallel {
 		}
 	}
 };
+
+constexpr int nthreads = 4;

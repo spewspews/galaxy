@@ -35,7 +35,7 @@ void Simulator::stop() {
 
 void Simulator::simLoop(Galaxy& g, UI& ui) {
 	BHTree tree;
-	Parallel<3> par;
+	Parallel<nthreads-1> par;
 	par.startThreads(g, tree);
 	for(;;) {
 		if(pause_) {
@@ -62,8 +62,8 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 
 		par.goThreads();
 
-		auto nbody = g.bodies.size() / 4;
-		auto i = g.bodies.begin() + nbody * 3;
+		auto nbody = g.bodies.size() / nthreads;
+		auto i = g.bodies.begin() + nbody * (nthreads-1);
 		while(i < g.bodies.end())
 			tree.calcforce(*i++);
 
