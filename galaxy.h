@@ -8,6 +8,8 @@
 #include <sstream>
 #include <thread>
 
+constexpr int nthreads = 4;
+
 using Point = Linear<int>;
 
 struct Quad;
@@ -58,6 +60,8 @@ struct BHTree {
 };
 
 struct UI;
+template <int n>
+struct Threads;
 
 struct Simulator {
 	double dt{0.1}, dt²{dt * dt};
@@ -76,6 +80,11 @@ struct Simulator {
 	int pid_{-1};
 
 	void simLoop(Galaxy&, UI&);
+	void doPause();
+	void doStop();
+	void doStop(Threads<nthreads-1>&);
+	void verlet(Galaxy&);
+	static void calcForces(Galaxy&, BHTree&);
 };
 
 struct Pauser {
@@ -140,42 +149,55 @@ struct UI {
 };
 
 template <int n>
-struct Parallel {
-	std::array<std::condition_variable, n> cv;
-	std::array<std::atomic_bool, n> go;
-	std::atomic_bool die{false};
-	std::mutex mudone;
-	std::condition_variable cvdone;
-	std::atomic_int running;
-
-	void goThreads() {
-		running = n;
+struct Threads {
+	void start(Galaxy& g, BHTree &tree) {
 		for(auto i = 0; i < n; ++i) {
-			go[i] = true;
-			cv[i].notify_one();
+			auto t = std::thread([this, i, &g, &tree] { calcForcesLoop(i, g, tree); });
+			t.detach();
 		}
 	}
 
-	void startThreads(Galaxy& g, BHTree &tree) {
+	void stop() {
+		die_ = true;
+		go();
+	}
+
+	void go() {
+		running_ = n;
 		for(auto i = 0; i < n; ++i) {
-			auto t = std::thread([this, &g, &tree, i] { calcLoop(g, tree, i); });
-			t.detach();
+			go_[i] = true;
+			cv_[i].notify_one();
+		}
+	}
+
+	void wait() {
+		if(running_ > 0) {
+			std::unique_lock<std::mutex> lk(mudone_);
+			while(running_ > 0)
+				cvdone_.wait(lk);
 		}
 	}
 
   private:
 	std::array<std::mutex, n> mu_;
+	std::array<std::condition_variable, n> cv_;
+	std::array<std::atomic_bool, n> go_;
+	std::atomic_bool die_{false};
+	std::mutex mudone_;
+	std::condition_variable cvdone_;
+	std::atomic_int running_;
 
-	void calcLoop(Galaxy& g, BHTree& tree, const int tid) {
+
+	void calcForcesLoop(const int tid, Galaxy& g, BHTree& tree) {
 		for(;;) {
-			if(!go[tid]) {
+			if(!go_[tid]) {
 				std::unique_lock<std::mutex> lk(mu_[tid]);
-				while(!go[tid])
-					cv[tid].wait(lk);
+				while(!go_[tid])
+					cv_[tid].wait(lk);
 			}
-			if(die)
+			if(die_)
 				return;
-			go[tid] = false;
+			go_[tid] = false;
 	
 			auto nbody = g.bodies.size() / (n+1);
 			auto start = g.bodies.begin() + nbody * tid;
@@ -183,10 +205,8 @@ struct Parallel {
 			for(auto& i = start; i < end; ++i)
 				tree.calcforce(*i);
 	
-			if(--running == 0)
-				cvdone.notify_one();
+			if(--running_ == 0)
+				cvdone_.notify_one();
 		}
 	}
 };
-
-constexpr int nthreads = 4;

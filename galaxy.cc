@@ -33,26 +33,46 @@ void Simulator::stop() {
 	}
 }
 
+void Simulator::doPause() {
+	paused_ = true;
+	cvpd_.notify_one();
+	std::unique_lock<std::mutex> lk(mup_);
+	while(pause_)
+		cvp_.wait(lk);
+	paused_ = false;
+	cvpd_.notify_one();
+}
+
+void Simulator::doStop(Threads<nthreads-1>& thr) {
+	thr.stop();
+	stopped_ = true;
+	cvstop_.notify_one();
+}
+
+void Simulator::calcForces(Galaxy& g, BHTree& tree) {
+	auto nbody = g.bodies.size() / nthreads;
+	auto i = g.bodies.begin() + nbody * (nthreads-1);
+	while(i < g.bodies.end())
+		tree.calcforce(*i++);
+}
+
+void Simulator::verlet(Galaxy& g) {
+	for(auto& b : g.bodies) {
+		b.p += b.v * dt + b.a * dt² / 2;
+		b.v += (b.a + b.newa) * dt / 2;
+		g.checkLimit(b.p);
+	}
+}
+
 void Simulator::simLoop(Galaxy& g, UI& ui) {
 	BHTree tree;
-	Parallel<nthreads-1> par;
-	par.startThreads(g, tree);
+	Threads<nthreads-1> thr;
+	thr.start(g, tree);
 	for(;;) {
-		if(pause_) {
-			paused_ = true;
-			cvpd_.notify_one();
-			std::unique_lock<std::mutex> lk(mup_);
-			while(pause_)
-				cvp_.wait(lk);
-			paused_ = false;
-			cvpd_.notify_one();
-		}
-
+		if(pause_) 
+			doPause();
 		if(stop_) {
-			stopped_ = true;
-			par.die = true;
-			par.goThreads();
-			cvstop_.notify_one();
+			doStop(thr);
 			return;
 		}
 
@@ -60,24 +80,11 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 
 		tree.insert(g);
 
-		par.goThreads();
+		thr.go();
+		calcForces(g, tree);
+		thr.wait();
 
-		auto nbody = g.bodies.size() / nthreads;
-		auto i = g.bodies.begin() + nbody * (nthreads-1);
-		while(i < g.bodies.end())
-			tree.calcforce(*i++);
-
-		if(par.running > 0) {
-			std::unique_lock<std::mutex> lk(par.mudone);
-			while(par.running > 0)
-				par.cvdone.wait(lk);
-		}
-
-		for(auto& b : g.bodies) {
-			b.p += b.v * dt + b.a * dt² / 2;
-			b.v += (b.a + b.newa) * dt / 2;
-			g.checkLimit(b.p);
-		}
+		verlet(g);
 	}
 }
 
