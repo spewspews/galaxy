@@ -150,9 +150,9 @@ struct UI {
 
 template <int n>
 struct Threads {
-	void start(Galaxy& g, BHTree &tree) {
+	Threads(Galaxy& g, BHTree& tree) : bodies_{g.bodies}, tree_{tree} {
 		for(auto i = 0; i < n; ++i) {
-			auto t = std::thread([this, i, &g, &tree] { calcForcesLoop(i, g, tree); });
+			auto t = std::thread([this, i] { calcForcesLoop(i); });
 			t.detach();
 		}
 	}
@@ -186,9 +186,11 @@ struct Threads {
 	std::mutex mudone_;
 	std::condition_variable cvdone_;
 	std::atomic_int running_;
+	std::vector<Body>& bodies_;
+	BHTree& tree_;
 
 
-	void calcForcesLoop(const int tid, Galaxy& g, BHTree& tree) {
+	void calcForcesLoop(const int tid) {
 		for(;;) {
 			if(!go_[tid]) {
 				std::unique_lock<std::mutex> lk(mu_[tid]);
@@ -199,11 +201,11 @@ struct Threads {
 				return;
 			go_[tid] = false;
 	
-			auto nbody = g.bodies.size() / (n+1);
-			auto start = g.bodies.begin() + nbody * tid;
-			auto end = g.bodies.begin() + nbody * (tid + 1);
+			auto nbody = bodies_.size() / (n+1);
+			auto start = bodies_.begin() + nbody * tid;
+			auto end = start + nbody;
 			for(auto& i = start; i < end; ++i)
-				tree.calcforce(*i);
+				tree_.calcforce(*i);
 	
 			if(--running_ == 0)
 				cvdone_.notify_one();

@@ -66,8 +66,7 @@ void Simulator::verlet(Galaxy& g) {
 
 void Simulator::simLoop(Galaxy& g, UI& ui) {
 	BHTree tree;
-	Threads<nthreads-1> thr;
-	thr.start(g, tree);
+	Threads<nthreads-1> thr(g, tree);
 	for(;;) {
 		if(pause_) 
 			doPause();
