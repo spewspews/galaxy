@@ -33,57 +33,10 @@ void Simulator::stop() {
 	}
 }
 
-template <int n>
-struct Parallel {
-	std::array<std::mutex, n> mu;
-	std::array<std::condition_variable, n> cv;
-	std::array<std::atomic_bool, n> go;
-	std::atomic_bool die;
-	std::mutex mudone;
-	std::condition_variable cvdone;
-	std::atomic_int running;
-
-	void goThreads() {
-		running = n;
-		for(auto i = 0; i < n; ++i) {
-			go[i] = true;
-			cv[i].notify_one();
-		}
-	}
-};
-
-Parallel<3> par;
-
-void calcLoop(Galaxy& g, BHTree& tree, const int tid) {
-	for(;;) {
-		if(!par.go[tid]) {
-			std::unique_lock<std::mutex> lk(par.mu[tid]);
-			while(!par.go[tid])
-				par.cv[tid].wait(lk);
-		}
-		if(par.die) {
-			std::cerr << "Calcloop " << tid << " dying\n";
-			return;
-		}
-		par.go[tid] = false;
-
-		auto nbody = g.bodies.size()/4;
-		auto start = g.bodies.begin() + nbody*tid;
-		auto end = g.bodies.begin() + nbody*(tid+1);
-		for(auto& i = start; i < end; ++i)
-			tree.calcforce(*i);
-
-		if(--par.running == 0)
-			par.cvdone.notify_one();
-	}
-}
-
 void Simulator::simLoop(Galaxy& g, UI& ui) {
 	BHTree tree;
-	for(auto i = 0; i < 3; i++) {
-		auto t = std::thread([&g, &tree, i] { calcLoop(g, tree, i); });
-		t.detach();
-	}
+	Parallel<3> par;
+	par.startThreads(g, tree);
 	for(;;) {
 		if(pause_) {
 			paused_ = true;
@@ -109,8 +62,8 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 
 		par.goThreads();
 
-		auto nbody = g.bodies.size()/4;
-		auto i = g.bodies.begin() + nbody*3;
+		auto nbody = g.bodies.size() / 4;
+		auto i = g.bodies.begin() + nbody * 3;
 		while(i < g.bodies.end())
 			tree.calcforce(*i++);
 
@@ -179,29 +132,22 @@ int main(int argc, char** argv) {
 	if(args.get("help") || args.get("h"))
 		usage();
 
-	int n;
-	args.get<int>(n, "n", 0);
-
-try {
 	Simulator sim;
 	UI ui(sim);
-
 	Galaxy glxy;
 	if(args.get("i")) {
 		load(glxy, ui, sim, std::cin);
 		glxy.center();
 	}
-
 	if(args.flags().size() > 0)
 		usage();
 
-	sim.simulate(glxy, ui);
-	ui.loop(glxy);
-} catch (const std::runtime_error& e) {
-	std::cerr << "Runtime error: " << e.what() << '\n';
-	return 1;
-}
-
-	std::cerr << "Program done\n";
+	try {
+		sim.simulate(glxy, ui);
+		ui.loop(glxy);
+	} catch(const std::runtime_error& e) {
+		std::cerr << "Runtime error: " << e.what() << '\n';
+		return 1;
+	}
 	return 0;
 }

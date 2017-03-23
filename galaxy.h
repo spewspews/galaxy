@@ -60,7 +60,7 @@ struct BHTree {
 struct UI;
 
 struct Simulator {
-	double dt{0.1}, dt²{dt*dt};
+	double dt{0.1}, dt²{dt * dt};
 
 	void simulate(Galaxy& g, UI& ui);
 	void pause(int);
@@ -69,7 +69,8 @@ struct Simulator {
 	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
 
   private:
-	std::atomic_bool paused_{false}, pause_{false}, stop_{false}, stopped_{false};
+	std::atomic_bool paused_{false}, pause_{false}, stop_{false},
+	    stopped_{false};
 	std::condition_variable cvp_, cvpd_, cvstop_;
 	std::mutex mup_, mupd_, mustop_;
 	int pid_{-1};
@@ -136,4 +137,53 @@ struct UI {
 	void init();
 	int handleEvents(Galaxy&);
 	int keyboard(SDL_Keycode&);
+};
+
+template <int n>
+struct Parallel {
+	std::array<std::mutex, n> mu;
+	std::array<std::condition_variable, n> cv;
+	std::array<std::atomic_bool, n> go;
+	std::atomic_bool die;
+	std::mutex mudone;
+	std::condition_variable cvdone;
+	std::atomic_int running;
+
+	void goThreads() {
+		running = n;
+		for(auto i = 0; i < n; ++i) {
+			go[i] = true;
+			cv[i].notify_one();
+		}
+	}
+
+	void startThreads(Galaxy& g, BHTree &tree) {
+		for(auto i = 0; i < n; i++) {
+			auto t = std::thread([this, &g, &tree, i] { calcLoop(g, tree, i); });
+			t.detach();
+		}
+	}
+
+  private:
+	void calcLoop(Galaxy& g, BHTree& tree, const int tid) {
+		for(;;) {
+			if(!go[tid]) {
+				std::unique_lock<std::mutex> lk(mu[tid]);
+				while(!go[tid])
+					cv[tid].wait(lk);
+			}
+			if(die)
+				return;
+			go[tid] = false;
+	
+			auto nbody = g.bodies.size() / 4;
+			auto start = g.bodies.begin() + nbody * tid;
+			auto end = g.bodies.begin() + nbody * (tid + 1);
+			for(auto& i = start; i < end; ++i)
+				tree.calcforce(*i);
+	
+			if(--running == 0)
+				cvdone.notify_one();
+		}
+	}
 };
