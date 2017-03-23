@@ -1,6 +1,32 @@
 #include "galaxy.h"
 #include "args.h"
 
+void Threads::calcForcesLoop(const int tid) {
+	for(;;) {
+		{
+			std::unique_lock<std::mutex> lk(gomu_[tid]);
+			while(!go_[tid])
+				gocv_[tid].wait(lk);
+			go_[tid] = 0;
+		}
+		if(die_)
+			return;
+
+		auto nbody = bodies_.size() / (n_ + 1);
+		auto start = bodies_.begin() + nbody * tid;
+		auto end = start + nbody;
+		for(auto& i = start; i < end; ++i)
+			tree_.calcforce(*i);
+
+		runningmu_.lock();
+		if(--running_ == 0) {
+			runningmu_.unlock();
+			runningcv_.notify_one();
+		} else
+			runningmu_.unlock();
+	}
+}
+
 void Simulator::pause(int id) {
 	if(pid_ != -1 && pid_ > id)
 		return;
@@ -43,15 +69,15 @@ void Simulator::doPause() {
 	cvpd_.notify_one();
 }
 
-void Simulator::doStop(Threads<nthreads-1>& thr) {
+void Simulator::doStop(Threads& thr) {
 	thr.stop();
 	stopped_ = true;
 	cvstop_.notify_one();
 }
 
 void Simulator::calcForces(Galaxy& g, BHTree& tree) {
-	auto nbody = g.bodies.size() / nthreads;
-	auto i = g.bodies.begin() + nbody * (nthreads-1);
+	auto nbody = g.bodies.size() / nthreads_;
+	auto i = g.bodies.begin() + nbody * (nthreads_ - 1);
 	while(i < g.bodies.end())
 		tree.calcforce(*i++);
 }
@@ -66,9 +92,9 @@ void Simulator::verlet(Galaxy& g) {
 
 void Simulator::simLoop(Galaxy& g, UI& ui) {
 	BHTree tree;
-	Threads<nthreads-1> thr(g, tree);
+	Threads thr(nthreads_ - 1, g, tree);
 	for(;;) {
-		if(pause_) 
+		if(pause_)
 			doPause();
 		if(stop_) {
 			doStop(thr);
@@ -138,7 +164,7 @@ int main(int argc, char** argv) {
 	if(args.get("help") || args.get("h"))
 		usage();
 
-	Simulator sim;
+	Simulator sim(4);
 	UI ui(sim);
 	Galaxy glxy;
 	if(args.get("i")) {

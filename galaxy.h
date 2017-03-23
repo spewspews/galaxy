@@ -8,8 +8,6 @@
 #include <sstream>
 #include <thread>
 
-constexpr int nthreads = 4;
-
 using Point = Linear<int>;
 
 struct Quad;
@@ -60,11 +58,12 @@ struct BHTree {
 };
 
 struct UI;
-template <int n>
 struct Threads;
 
 struct Simulator {
 	double dt{0.1}, dt²{dt * dt};
+
+	Simulator(int nthreads) : nthreads_{nthreads} {}
 
 	void simulate(Galaxy& g, UI& ui);
 	void pause(int);
@@ -78,13 +77,14 @@ struct Simulator {
 	std::condition_variable cvp_, cvpd_, cvstop_;
 	std::mutex mup_, mupd_, mustop_;
 	int pid_{-1};
+	const int nthreads_;
 
 	void simLoop(Galaxy&, UI&);
 	void doPause();
 	void doStop();
-	void doStop(Threads<nthreads - 1>&);
+	void doStop(Threads&);
 	void verlet(Galaxy&);
-	static void calcForces(Galaxy&, BHTree&);
+	void calcForces(Galaxy&, BHTree&);
 };
 
 struct Pauser {
@@ -148,10 +148,11 @@ struct UI {
 	int keyboard(SDL_Keycode&);
 };
 
-template <int n>
 struct Threads {
-	Threads(Galaxy& g, BHTree& tree) : bodies_{g.bodies}, tree_{tree} {
-		for(auto i = 0; i < n; ++i) {
+	Threads(const int nthreads, Galaxy& g, BHTree& tree)
+	    : n_{nthreads}, gomu_(nthreads), gocv_(nthreads), go_(nthreads, 0),
+	      bodies_{g.bodies}, tree_{tree} {
+		for(auto i = 0; i < nthreads; ++i) {
 			auto t = std::thread([this, i] { calcForcesLoop(i); });
 			t.detach();
 		}
@@ -163,55 +164,32 @@ struct Threads {
 	}
 
 	void go() {
-		running_ = n;
-		for(auto i = 0; i < n; ++i) {
-			mu_[i].lock();
-			go_[i] = true;
-			mu_[i].unlock();
-			cv_[i].notify_one();
+		running_ = n_;
+		for(auto tid = 0; tid < n_; ++tid) {
+			gomu_[tid].lock();
+			go_[tid] = 1;
+			gomu_[tid].unlock();
+			gocv_[tid].notify_one();
 		}
 	}
 
 	void wait() {
-		std::unique_lock<std::mutex> lk(muRunning_);
+		std::unique_lock<std::mutex> lk(runningmu_);
 		while(running_ > 0)
-			cvRunning_.wait(lk);
+			runningcv_.wait(lk);
 	}
 
   private:
-	std::array<std::mutex, n> mu_;
-	std::array<std::condition_variable, n> cv_;
-	std::array<bool, n> go_;
+	const int n_;
+	std::vector<std::mutex> gomu_;
+	std::vector<std::condition_variable> gocv_;
+	std::vector<int> go_;
 	std::atomic_bool die_{false};
-	std::mutex muRunning_;
-	std::condition_variable cvRunning_;
+	std::mutex runningmu_;
+	std::condition_variable runningcv_;
 	int running_;
 	std::vector<Body>& bodies_;
 	BHTree& tree_;
 
-	void calcForcesLoop(const int tid) {
-		for(;;) {
-			{
-				std::unique_lock<std::mutex> lk(mu_[tid]);
-				while(!go_[tid])
-					cv_[tid].wait(lk);
-			}
-			if(die_)
-				return;
-			go_[tid] = false;
-
-			auto nbody = bodies_.size() / (n + 1);
-			auto start = bodies_.begin() + nbody * tid;
-			auto end = start + nbody;
-			for(auto& i = start; i < end; ++i)
-				tree_.calcforce(*i);
-
-			muRunning_.lock();
-			if(--running_ == 0) {
-				muRunning_.unlock();
-				cvRunning_.notify_one();
-			} else
-				muRunning_.unlock();
-		}
-	}
+	void calcForcesLoop(const int);
 };
