@@ -1,6 +1,31 @@
 #include "galaxy.h"
 #include "args.h"
 
+void CalcThread::loop() {
+	for(;;) {
+		if(!go) {
+			std::unique_lock<std::mutex> lk(mu_);
+			while(!go)
+				cv.wait(lk);
+		}
+		if(par_.die)
+			return;
+
+		go = false;
+
+		auto& bodies = par_.glxy.bodies;
+		auto nbody = bodies.size()/par_.nthread;
+		auto start = bodies.begin() + nbody*tid_;
+		auto end = bodies.begin() + nbody*(tid_+1);
+
+		for(auto& i = start; i < end; ++i)
+			par_.tree->calcforce(*i);
+
+		if(--par_.running == 0)
+			par_.cvdone.notify_one();
+	}
+}
+
 void Simulator::pause(int id) {
 	if(pid_ != -1 && pid_ > id)
 		return;
@@ -25,110 +50,67 @@ void Simulator::unpause(int id) {
 }
 
 void Simulator::stop() {
-	std::cerr << "Simulator stopping\n";
 	stop_ = true;
 	if(!stopped_) {
 		std::unique_lock<std::mutex> lk(mustop_);
 		while(!stopped_)
 			cvstop_.wait(lk);
 	}
-	std::cerr << "Simulator stopped\n";
 }
 
-std::array<std::mutex, 3> mu;
-std::array<std::condition_variable, 3> cv;
-std::array<std::atomic_bool, 3> go;
-std::atomic_bool die;
-std::mutex mudone;
-std::condition_variable cvdone;
-std::atomic_int running;
-
-void calcLoop(Galaxy& g, BHTree& tree, const int tid) {
-	for(;;) {
-		if(!go[tid]) {
-			std::unique_lock<std::mutex> lk(mu[tid]);
-			while(!go[tid])
-				cv[tid].wait(lk);
-		}
-		if(die) {
-			std::cerr << "Calcloop " << tid << " dying\n";
-			return;
-		}
-		go[tid] = false;
-
-		auto nbody = g.bodies.size()/4;
-		auto start = g.bodies.begin() + nbody*tid;
-		auto end = g.bodies.begin() + nbody*(tid+1);
-		for(auto& i = start; i < end; ++i)
-			tree.calcforce(*i);
-
-		--running;
-		if(running == 0)
-			cvdone.notify_one();
-	}
+void Simulator::doPause() {
+	paused_ = true;
+	cvpd_.notify_one();
+	std::unique_lock<std::mutex> lk(mup_);
+	while(pause_)
+		cvp_.wait(lk);
+	paused_ = false;
+	cvpd_.notify_one();
 }
 
-void goThreads() {
-	running = 3;
-	for(auto i = 0; i < 3; ++i) {
-		go[i] = true;
-		cv[i].notify_one();
-	}
+void Simulator::doStop() {
+	stopped_ = true;
+	cvstop_.notify_one();
 }
 
-void Simulator::simLoop(Galaxy& g, UI& ui) {
+void Simulator::calc(BHTree& tree) {
+	par_.calc(tree);
+	auto nbody = glxy_.bodies.size()/(nthreads_+1);
+	auto i = glxy_.bodies.begin() + nbody*nthreads_;
+	while(i < glxy_.bodies.end())
+		tree.calcforce(*i++);
+	par_.wait();
+}
+
+void Simulator::verlet(Body& b) {
+	b.p += b.v * dt + b.a * dt² / 2;
+	b.v += (b.a + b.newa) * dt / 2;
+	glxy_.checkLimit(b.p);
+}
+
+void Simulator::simLoop(UI& ui) {
 	BHTree tree;
-	for(auto i = 0; i < 3; i++) {
-		auto t = std::thread([&g, &tree, i] { calcLoop(g, tree, i); });
-		t.detach();
-	}
-	for(;;) {
-		if(pause_) {
-			paused_ = true;
-			cvpd_.notify_one();
-			std::unique_lock<std::mutex> lk(mup_);
-			while(pause_)
-				cvp_.wait(lk);
-			paused_ = false;
-			cvpd_.notify_one();
-		}
 
+	par_.start();
+
+	for(;;) {
+		if(pause_)
+			doPause();
 		if(stop_) {
-			stopped_ = true;
-			die = true;
-			goThreads();
-			cvstop_.notify_one();
-			std::cerr << "simLoop returning\n";
+			par_.stop();
+			doStop();
 			return;
 		}
-
-		ui.draw(g);
-
-		tree.insert(g);
-
-		goThreads();
-
-		auto nbody = g.bodies.size()/4;
-		auto i = g.bodies.begin() + nbody*3;
-		while(i < g.bodies.end())
-			tree.calcforce(*i++);
-
-		if(running > 0) {
-			std::unique_lock<std::mutex> lk(mudone);
-			while(running > 0)
-				cvdone.wait(lk);
-		}
-
-		for(auto& b : g.bodies) {
-			b.p += b.v * dt + b.a * dt² / 2;
-			b.v += (b.a + b.newa) * dt / 2;
-			g.checkLimit(b.p);
-		}
+		ui.draw(glxy_);
+		tree.insert(glxy_);
+		calc(tree);
+		for(auto& b : glxy_.bodies)
+			verlet(b);
 	}
 }
 
-void Simulator::simulate(Galaxy& g, UI& ui) {
-	auto t = std::thread([this, &g, &ui] { simLoop(g, ui); });
+void Simulator::simulate(UI& ui) {
+	auto t = std::thread([this, &ui] { simLoop(ui); });
 	t.detach();
 }
 
@@ -165,6 +147,8 @@ void load(Galaxy& g, UI& ui, Simulator& sim, std::istream& is) {
 	}
 }
 
+namespace flags {
+
 char* argv0;
 
 void usage() {
@@ -172,35 +156,42 @@ void usage() {
 	exit(1);
 }
 
-int main(int argc, char** argv) {
-	argv0 = argv[0];
-	args::Args args(argc, argv);
+bool doLoad;
+int nthreads;
+
+void doFlags(args::Args args) {
 	if(args.get("help") || args.get("h"))
 		usage();
+	args.get<int>(nthreads, "n", 0);
+	doLoad = args.get("i");
+	if(args.flags().size() > 0) {
+		usage();
+	}
+}
 
-	int n;
-	args.get<int>(n, "n", 0);
+} // namespace flags
 
-try {
-	Simulator sim;
-	UI ui(sim);
+int main(int argc, char** argv) {
+	flags::argv0 = argv[0];
+	args::Args args(argc, argv);
+	flags::doFlags(args);
 
 	Galaxy glxy;
-	if(args.get("i")) {
+	Simulator sim(flags::nthreads, glxy);
+	UI ui(sim);
+
+	if(flags::doLoad) {
 		load(glxy, ui, sim, std::cin);
 		glxy.center();
 	}
 
-	if(args.flags().size() > 0)
-		usage();
-
-	sim.simulate(glxy, ui);
+try {
+	sim.simulate(ui);
 	ui.loop(glxy);
 } catch (const std::runtime_error& e) {
 	std::cerr << "Runtime error: " << e.what() << '\n';
 	return 1;
 }
-
-	std::cerr << "Program done\n";
 	return 0;
 }
+

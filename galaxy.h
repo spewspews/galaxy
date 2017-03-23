@@ -57,24 +57,104 @@ struct BHTree {
 	}
 };
 
+struct Parallel;
+
+struct CalcThread {
+	std::atomic_bool go{false};
+	std::condition_variable cv;
+
+	CalcThread(int tid, Parallel& par) : tid_{tid}, par_{par} {}
+	CalcThread(CalcThread&& ct) : tid_{ct.tid_}, par_{ct.par_} {}
+
+	void start() {
+		auto t = std::thread([this] { loop(); });
+		t.detach();
+	}
+
+  private:
+	const int tid_;
+	std::mutex mu_;
+	Parallel& par_;
+
+	void loop();
+};
+
+struct Parallel {
+	const int nthread;
+	std::atomic_int running;
+	std::atomic_bool die;
+	std::condition_variable cvdone;
+	BHTree* tree;
+	Galaxy& glxy;
+
+	Parallel(int n, Galaxy& g) : nthread{n}, glxy{g} {
+		for(auto i = 0; i < nthread; ++i)
+			threads_.emplace_back(i, *this);
+	}
+
+	void start() {
+		for(auto& t : threads_)
+			t.start();
+	}
+
+	void calc(BHTree& t) {
+		tree = &t;
+		running = nthread;
+		for(auto& t : threads_) {
+			t.go = true;
+			t.cv.notify_one();
+		}
+	}
+
+	void stop() {
+		die = true;
+		for(auto& t : threads_) {
+			t.go = true;
+			t.cv.notify_one();
+		}
+	}
+
+	void wait() {
+		if(running > 0) {
+			std::unique_lock<std::mutex> lk(mudone_);
+			while(running > 0)
+				cvdone.wait(lk);
+		}
+	}
+
+  private:
+	std::vector<CalcThread> threads_;
+	std::mutex mudone_;
+};
+
 struct UI;
 
 struct Simulator {
 	double dt{0.1}, dt²{dt*dt};
 
-	void simulate(Galaxy& g, UI& ui);
+	Simulator(int nthreads, Galaxy& g) : nthreads_{nthreads}, glxy_{g}, par_{nthreads, g} {};
+
+	void simulate(UI&);
 	void pause(int);
 	void unpause(int);
 	void stop();
 	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
 
   private:
+	const int nthreads_;
+	Galaxy& glxy_;
 	std::atomic_bool paused_{false}, pause_{false}, stop_{false}, stopped_{false};
 	std::condition_variable cvp_, cvpd_, cvstop_;
 	std::mutex mup_, mupd_, mustop_;
 	int pid_{-1};
+	Parallel par_;
 
-	void simLoop(Galaxy&, UI&);
+	void simLoop(UI&);
+	void calc(BHTree&);
+	void goThreads();
+	void doStop();
+	void doPause();
+	void verlet(Body&);
 };
 
 struct Pauser {
