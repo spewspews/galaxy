@@ -82,7 +82,7 @@ struct Simulator {
 	void simLoop(Galaxy&, UI&);
 	void doPause();
 	void doStop();
-	void doStop(Threads<nthreads-1>&);
+	void doStop(Threads<nthreads - 1>&);
 	void verlet(Galaxy&);
 	static void calcForces(Galaxy&, BHTree&);
 };
@@ -165,34 +165,33 @@ struct Threads {
 	void go() {
 		running_ = n;
 		for(auto i = 0; i < n; ++i) {
+			mu_[i].lock();
 			go_[i] = true;
+			mu_[i].unlock();
 			cv_[i].notify_one();
 		}
 	}
 
 	void wait() {
-		if(running_ > 0) {
-			std::unique_lock<std::mutex> lk(mudone_);
-			while(running_ > 0)
-				cvdone_.wait(lk);
-		}
+		std::unique_lock<std::mutex> lk(muRunning_);
+		while(running_ > 0)
+			cvRunning_.wait(lk);
 	}
 
   private:
 	std::array<std::mutex, n> mu_;
 	std::array<std::condition_variable, n> cv_;
-	std::array<std::atomic_bool, n> go_;
+	std::array<bool, n> go_;
 	std::atomic_bool die_{false};
-	std::mutex mudone_;
-	std::condition_variable cvdone_;
-	std::atomic_int running_;
+	std::mutex muRunning_;
+	std::condition_variable cvRunning_;
+	int running_;
 	std::vector<Body>& bodies_;
 	BHTree& tree_;
 
-
 	void calcForcesLoop(const int tid) {
 		for(;;) {
-			if(!go_[tid]) {
+			{
 				std::unique_lock<std::mutex> lk(mu_[tid]);
 				while(!go_[tid])
 					cv_[tid].wait(lk);
@@ -200,15 +199,19 @@ struct Threads {
 			if(die_)
 				return;
 			go_[tid] = false;
-	
-			auto nbody = bodies_.size() / (n+1);
+
+			auto nbody = bodies_.size() / (n + 1);
 			auto start = bodies_.begin() + nbody * tid;
 			auto end = start + nbody;
 			for(auto& i = start; i < end; ++i)
 				tree_.calcforce(*i);
-	
-			if(--running_ == 0)
-				cvdone_.notify_one();
+
+			muRunning_.lock();
+			if(--running_ == 0) {
+				muRunning_.unlock();
+				cvRunning_.notify_one();
+			} else
+				muRunning_.unlock();
 		}
 	}
 };

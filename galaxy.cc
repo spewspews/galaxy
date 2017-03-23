@@ -67,7 +67,7 @@ void Simulator::verlet(Galaxy& g) {
 void Simulator::simLoop(Galaxy& g, UI& ui) {
 	BHTree tree;
 	Threads<nthreads-1> thr(g, tree);
-	for(;;) {
+	for(auto i = 0; i < 500; ++i) {
 		if(pause_) 
 			doPause();
 		if(stop_) {
@@ -85,6 +85,7 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 
 		verlet(g);
 	}
+	std::terminate();
 }
 
 void Simulator::simulate(Galaxy& g, UI& ui) {
