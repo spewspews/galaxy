@@ -25,36 +25,47 @@ void Simulator::unpause(int id) {
 }
 
 void Simulator::stop() {
-	std::cerr << "Simulator stopping\n";
 	stop_ = true;
 	if(!stopped_) {
 		std::unique_lock<std::mutex> lk(mustop_);
 		while(!stopped_)
 			cvstop_.wait(lk);
 	}
-	std::cerr << "Simulator stopped\n";
 }
 
-std::array<std::mutex, 3> mu;
-std::array<std::condition_variable, 3> cv;
-std::array<std::atomic_bool, 3> go;
-std::atomic_bool die;
-std::mutex mudone;
-std::condition_variable cvdone;
-std::atomic_int running;
+template <int n>
+struct Parallel {
+	std::array<std::mutex, n> mu;
+	std::array<std::condition_variable, n> cv;
+	std::array<std::atomic_bool, n> go;
+	std::atomic_bool die;
+	std::mutex mudone;
+	std::condition_variable cvdone;
+	std::atomic_int running;
+
+	void goThreads() {
+		running = n;
+		for(auto i = 0; i < n; ++i) {
+			go[i] = true;
+			cv[i].notify_one();
+		}
+	}
+};
+
+Parallel<3> par;
 
 void calcLoop(Galaxy& g, BHTree& tree, const int tid) {
 	for(;;) {
-		if(!go[tid]) {
-			std::unique_lock<std::mutex> lk(mu[tid]);
-			while(!go[tid])
-				cv[tid].wait(lk);
+		if(!par.go[tid]) {
+			std::unique_lock<std::mutex> lk(par.mu[tid]);
+			while(!par.go[tid])
+				par.cv[tid].wait(lk);
 		}
-		if(die) {
+		if(par.die) {
 			std::cerr << "Calcloop " << tid << " dying\n";
 			return;
 		}
-		go[tid] = false;
+		par.go[tid] = false;
 
 		auto nbody = g.bodies.size()/4;
 		auto start = g.bodies.begin() + nbody*tid;
@@ -62,17 +73,8 @@ void calcLoop(Galaxy& g, BHTree& tree, const int tid) {
 		for(auto& i = start; i < end; ++i)
 			tree.calcforce(*i);
 
-		--running;
-		if(running == 0)
-			cvdone.notify_one();
-	}
-}
-
-void goThreads() {
-	running = 3;
-	for(auto i = 0; i < 3; ++i) {
-		go[i] = true;
-		cv[i].notify_one();
+		if(--par.running == 0)
+			par.cvdone.notify_one();
 	}
 }
 
@@ -95,10 +97,9 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 
 		if(stop_) {
 			stopped_ = true;
-			die = true;
-			goThreads();
+			par.die = true;
+			par.goThreads();
 			cvstop_.notify_one();
-			std::cerr << "simLoop returning\n";
 			return;
 		}
 
@@ -106,17 +107,17 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 
 		tree.insert(g);
 
-		goThreads();
+		par.goThreads();
 
 		auto nbody = g.bodies.size()/4;
 		auto i = g.bodies.begin() + nbody*3;
 		while(i < g.bodies.end())
 			tree.calcforce(*i++);
 
-		if(running > 0) {
-			std::unique_lock<std::mutex> lk(mudone);
-			while(running > 0)
-				cvdone.wait(lk);
+		if(par.running > 0) {
+			std::unique_lock<std::mutex> lk(par.mudone);
+			while(par.running > 0)
+				par.cvdone.wait(lk);
 		}
 
 		for(auto& b : g.bodies) {
