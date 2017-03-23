@@ -141,10 +141,9 @@ struct UI {
 
 template <int n>
 struct Parallel {
-	std::array<std::mutex, n> mu;
 	std::array<std::condition_variable, n> cv;
 	std::array<std::atomic_bool, n> go;
-	std::atomic_bool die;
+	std::atomic_bool die{false};
 	std::mutex mudone;
 	std::condition_variable cvdone;
 	std::atomic_int running;
@@ -158,17 +157,19 @@ struct Parallel {
 	}
 
 	void startThreads(Galaxy& g, BHTree &tree) {
-		for(auto i = 0; i < n; i++) {
+		for(auto i = 0; i < n; ++i) {
 			auto t = std::thread([this, &g, &tree, i] { calcLoop(g, tree, i); });
 			t.detach();
 		}
 	}
 
   private:
+	std::array<std::mutex, n> mu_;
+
 	void calcLoop(Galaxy& g, BHTree& tree, const int tid) {
 		for(;;) {
 			if(!go[tid]) {
-				std::unique_lock<std::mutex> lk(mu[tid]);
+				std::unique_lock<std::mutex> lk(mu_[tid]);
 				while(!go[tid])
 					cv[tid].wait(lk);
 			}
