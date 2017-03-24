@@ -158,28 +158,47 @@ void load(Galaxy& g, UI& ui, Simulator& sim, std::istream& is) {
 	}
 }
 
+namespace flags {
+
 char* argv0;
+bool doLoad;
+int nthreads;
 
 void usage() {
 	std::cerr << "Usage: " << argv0 << " [-i] [-n]\n";
 	exit(1);
 }
 
-int main(int argc, char** argv) {
-	argv0 = argv[0];
-	args::Args args(argc, argv);
+int doFlags(args::Args& args) {
 	if(args.get("help") || args.get("h"))
 		usage();
 
-	Simulator sim(4);
+	doLoad = args.get("i");
+	args.get<int>(nthreads, "n", 4);
+
+	if(args.flags().size() > 0) {
+		usage();
+		return -1;
+	}
+	return 0;
+}
+
+} // namespace flags
+
+int main(int argc, char** argv) {
+	flags::argv0 = argv[0];
+	args::Args args(argc, argv);
+	if(flags::doFlags(args) == -1)
+		exit(1);
+
+	Simulator sim(flags::nthreads);
 	UI ui(sim);
 	Galaxy glxy;
-	if(args.get("i")) {
+
+	if(flags::doLoad) {
 		load(glxy, ui, sim, std::cin);
 		glxy.center();
 	}
-	if(args.flags().size() > 0)
-		usage();
 
 	try {
 		sim.simulate(glxy, ui);
