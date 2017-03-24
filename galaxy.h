@@ -62,7 +62,6 @@ struct Threads;
 
 struct Simulator {
 	double dt{0.1}, dt²{dt * dt};
-	friend struct Threads;
 
 	Simulator(int nthreads) : nthreads_{nthreads} {}
 
@@ -84,13 +83,8 @@ struct Simulator {
 	void doPause();
 	void doStop();
 	void doStop(Threads&);
-
-	void verlet(Galaxy& g, Body& b) const {
-		b.p += b.v * dt + b.a * dt² / 2;
-		b.v += (b.a + b.newa) * dt / 2;
-		g.checkLimit(b.p);
-	}
-
+	void verlet(Galaxy&);
+	void calcForces(Galaxy&, BHTree&);
 };
 
 struct Pauser {
@@ -155,10 +149,10 @@ struct UI {
 };
 
 struct Threads {
-	Threads(const Simulator& sim, Galaxy& glxy, BHTree& tree)
-	    : sim_{sim}, n_{sim.nthreads_-1}, gomu_(n_), gocv_(n_), go_(n_, 0),
-	      glxy_{glxy}, tree_{tree} {
-		for(auto i = 0; i < n_; ++i) {
+	Threads(const int nthreads, Galaxy& g, BHTree& tree)
+	    : n_{nthreads}, gomu_(nthreads), gocv_(nthreads), go_(nthreads, 0),
+	      bodies_{g.bodies}, tree_{tree} {
+		for(auto i = 0; i < nthreads; ++i) {
 			auto t = std::thread([this, i] { calcForcesLoop(i); });
 			t.detach();
 		}
@@ -185,24 +179,7 @@ struct Threads {
 			runningcv_.wait(lk);
 	}
 
-	void workReady(int tid) {
-		std::unique_lock<std::mutex> lk(gomu_[tid]);
-		while(!go_[tid])
-			gocv_[tid].wait(lk);
-		go_[tid] = 0;
-	}
-
-	void workDone() {
-		runningmu_.lock();
-		if(--running_ == 0) {
-			runningmu_.unlock();
-			runningcv_.notify_one();
-		} else
-			runningmu_.unlock();
-	}
-
   private:
-	const Simulator& sim_;
 	const int n_;
 	std::vector<std::mutex> gomu_;
 	std::vector<std::condition_variable> gocv_;
@@ -211,7 +188,7 @@ struct Threads {
 	std::mutex runningmu_;
 	std::condition_variable runningcv_;
 	int running_;
-	Galaxy& glxy_;
+	std::vector<Body>& bodies_;
 	BHTree& tree_;
 
 	void calcForcesLoop(const int);
