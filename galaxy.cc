@@ -9,8 +9,15 @@ void Threads::calcForcesLoop(const int tid) {
 				gocv_[tid].wait(lk);
 			go_[tid] = 0;
 		}
-		if(die_)
+		if(die_) {
+			runningmu_.lock();
+			if(--running_ == 0) {
+				runningmu_.unlock();
+				runningcv_.notify_one();
+			} else
+				runningmu_.unlock();
 			return;
+		}
 
 		auto nbody = bodies_.size() / (n_ + 1);
 		auto start = bodies_.begin() + nbody * tid;
@@ -92,12 +99,12 @@ void Simulator::verlet(Galaxy& g) {
 
 void Simulator::simLoop(Galaxy& g, UI& ui) {
 	BHTree tree;
-	Threads thr(nthreads_ - 1, g, tree);
+	Threads threads(nthreads_ - 1, g, tree);
 	for(;;) {
 		if(pause_)
 			doPause();
 		if(stop_) {
-			doStop(thr);
+			doStop(threads);
 			return;
 		}
 
@@ -105,9 +112,9 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 
 		tree.insert(g);
 
-		thr.go();
+		threads.go();
 		calcForces(g, tree);
-		thr.wait();
+		threads.wait();
 
 		verlet(g);
 	}

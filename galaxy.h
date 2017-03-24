@@ -161,6 +161,7 @@ struct Threads {
 	void stop() {
 		die_ = true;
 		go();
+		wait();
 	}
 
 	void go() {
