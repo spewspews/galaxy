@@ -3,6 +3,7 @@
 #include <iostream>
 #include <mutex>
 #include <random>
+#include <shared_mutex>
 #include <vector>
 
 struct RandCol {
@@ -101,11 +102,27 @@ struct Galaxy {
 
 	void checkLimit(const Vector& v) {
 		auto f = fabs(v.x);
-		if(f > limit / 2)
+		mu_.lock_shared();
+		if(f > limit / 2) {
+			mu_.unlock_shared();
+			mu_.lock();
 			limit = f * 2;
+			mu_.unlock();
+			mu_.lock_shared();
+		}
 		f = fabs(v.y);
-		if(f > limit / 2)
+		if(f > limit / 2) {
+			mu_.unlock_shared();
+			mu_.lock();
 			limit = f * 2;
+			mu_.unlock();
+			return;
+		}
+		mu_.unlock_shared();
 	}
+
 	Vector center();
+
+  private:
+	std::shared_mutex mu_;
 };

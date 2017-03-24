@@ -3,27 +3,24 @@
 
 void Threads::calcForcesLoop(const int tid) {
 	for(;;) {
-		{
-			std::unique_lock<std::mutex> lk(gomu_[tid]);
-			while(!go_[tid])
-				gocv_[tid].wait(lk);
-			go_[tid] = 0;
-		}
+		workReady(tid);
 		if(die_)
 			return;
 
-		auto nbody = bodies_.size() / (n_ + 1);
-		auto start = bodies_.begin() + nbody * tid;
+		auto nbody = glxy_.bodies.size() / (n_ + 1);
+		auto start = glxy_.bodies.begin() + nbody * tid;
 		auto end = start + nbody;
-		for(auto& i = start; i < end; ++i)
+		for(auto i = start; i < end; ++i)
 			tree_.calcforce(*i);
 
-		runningmu_.lock();
-		if(--running_ == 0) {
-			runningmu_.unlock();
-			runningcv_.notify_one();
-		} else
-			runningmu_.unlock();
+		workDone();
+		workReady(tid);
+
+
+		for(auto i = start; i < end; ++i)
+			sim_.verlet(glxy_, *i);
+
+		workDone();
 	}
 }
 
@@ -75,41 +72,36 @@ void Simulator::doStop(Threads& thr) {
 	cvstop_.notify_one();
 }
 
-void Simulator::calcForces(Galaxy& g, BHTree& tree) {
-	auto nbody = g.bodies.size() / nthreads_;
-	auto i = g.bodies.begin() + nbody * (nthreads_ - 1);
-	while(i < g.bodies.end())
-		tree.calcforce(*i++);
-}
-
-void Simulator::verlet(Galaxy& g) {
-	for(auto& b : g.bodies) {
-		b.p += b.v * dt + b.a * dt² / 2;
-		b.v += (b.a + b.newa) * dt / 2;
-		g.checkLimit(b.p);
-	}
-}
-
-void Simulator::simLoop(Galaxy& g, UI& ui) {
+void Simulator::simLoop(Galaxy& glxy, UI& ui) {
 	BHTree tree;
-	Threads thr(nthreads_ - 1, g, tree);
+	Threads threads(*this, glxy, tree);
 	for(;;) {
 		if(pause_)
 			doPause();
 		if(stop_) {
-			doStop(thr);
+			doStop(threads);
 			return;
 		}
 
-		ui.draw(g);
+		ui.draw(glxy);
 
-		tree.insert(g);
+		tree.insert(glxy);
 
-		thr.go();
-		calcForces(g, tree);
-		thr.wait();
+		threads.go();
 
-		verlet(g);
+		auto& bodies = glxy.bodies;
+		auto nbody = bodies.size() / nthreads_;
+		auto start = bodies.begin() + nbody * (nthreads_ - 1);
+		for(auto i = start; i < bodies.end(); ++i)
+			tree.calcforce(*i);
+
+		threads.wait();
+		threads.go();
+
+		for(auto i = start; i < bodies.end(); ++i)
+			verlet(glxy, *i);
+
+		threads.wait();
 	}
 }
 
