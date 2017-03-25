@@ -1,5 +1,5 @@
 LDLIBS=-lSDL2 -lSDL2_gfx -lpthread
-CXXFLAGS=-Wall -Wpedantic -Wextra -O3 -std=c++11 -g
+CXXFLAGS?=-Wall -Wpedantic -Wextra -O3 -std=c++11 -g
 CXX?=clang++
 CC=${CXX}
 
