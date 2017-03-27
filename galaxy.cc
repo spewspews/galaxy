@@ -4,19 +4,15 @@
 void Threads::calcForcesLoop(const int tid) {
 	for(;;) {
 		{
-			std::unique_lock<std::mutex> lk(gomut_[tid]);
-			while(!go_[tid])
-				gocv_[tid].wait(lk);
-			go_[tid] = 0;
-		}
-		if(die_) {
-			runningmut_.lock();
-			if(--running_ == 0) {
-				runningmut_.unlock();
-				runningcv_.notify_one();
-			} else
-				runningmut_.unlock();
-			return;
+			std::unique_lock<std::mutex> lk(flagmut_[tid]);
+			while(flag_[tid] == Flag::wait)
+				flagcv_[tid].wait(lk);
+			if(flag_[tid] == Flag::exit) {
+				if(--running_ == 0)
+					runningcv_.notify_one();
+				return;
+			}
+			flag_[tid] = Flag::wait;
 		}
 
 		auto nbody = bodies_.size() / (n_ + 1);
@@ -25,12 +21,8 @@ void Threads::calcForcesLoop(const int tid) {
 		for(auto& i = start; i < end; ++i)
 			tree_.calcforce(*i);
 
-		runningmut_.lock();
-		if(--running_ == 0) {
-			runningmut_.unlock();
+		if(--running_ == 0)
 			runningcv_.notify_one();
-		} else
-			runningmut_.unlock();
 	}
 }
 
@@ -57,7 +49,7 @@ void Simulator::unpause(int id) {
 		pausedcv_.wait(lk);
 }
 
-void Simulator::stop() {
+void Simulator::exit() {
 	if(paused_) {
 		pause_ = false;
 		pausecv_.notify_one();
@@ -65,11 +57,11 @@ void Simulator::stop() {
 		while(paused_)
 			pausedcv_.wait(lk);
 	}
-	stop_ = true;
-	if(!stopped_) {
-		std::unique_lock<std::mutex> lk(stopmut_);
-		while(!stopped_)
-			stopcv_.wait(lk);
+	exit_ = true;
+	if(!exited_) {
+		std::unique_lock<std::mutex> lk(exitedmut_);
+		while(!exited_)
+			exitedcv_.wait(lk);
 	}
 }
 
@@ -81,12 +73,6 @@ inline void Simulator::doPause() {
 		pausecv_.wait(lk);
 	paused_ = false;
 	pausedcv_.notify_one();
-}
-
-inline void Simulator::doStop(Threads& threads) {
-	threads.stop();
-	stopped_ = true;
-	stopcv_.notify_one();
 }
 
 void Simulator::calcForces(Galaxy& g, BHTree& tree) {
@@ -110,8 +96,10 @@ void Simulator::simLoop(Galaxy& g, UI& ui) {
 	for(;;) {
 		if(pause_)
 			doPause();
-		if(stop_) {
-			doStop(threads);
+		if(exit_) {
+			threads.exit();
+			exited_ = true;
+			exitedcv_.notify_one();
 			return;
 		}
 

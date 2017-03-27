@@ -68,21 +68,20 @@ struct Simulator {
 	void simulate(Galaxy& g, UI& ui);
 	void pause(int);
 	void unpause(int);
-	void stop();
+	void exit();
 	friend void load(Galaxy&, UI&, Simulator&, std::istream&);
 
   private:
-	std::atomic_bool paused_{false}, pause_{false}, stop_{false},
-	    stopped_{false};
-	std::condition_variable pausecv_, pausedcv_, stopcv_;
-	std::mutex pausemut_, pausedmut_, stopmut_;
+	std::atomic_bool paused_{false}, pause_{false}, exit_{false},
+	    exited_{false};
+	std::condition_variable pausecv_, pausedcv_, exitedcv_;
+	std::mutex pausemut_, pausedmut_, exitedmut_;
 	int pid_{-1};
 	const int nthreads_;
 
 	void simLoop(Galaxy&, UI&);
 	inline void doPause();
-	inline void doStop();
-	void doStop(Threads&);
+	void doExit(Threads&);
 	void verlet(Galaxy&);
 	void calcForces(Galaxy&, BHTree&);
 };
@@ -149,8 +148,10 @@ struct UI {
 };
 
 struct Threads {
+	enum class Flag { wait, go, exit };
+
 	Threads(const int nthreads, Galaxy& g, BHTree& tree)
-	    : n_{nthreads}, gomut_(nthreads), gocv_(nthreads), go_(nthreads, 0),
+	    : n_{nthreads}, flagmut_(nthreads), flagcv_(nthreads), flag_(nthreads, Flag::wait),
 	      bodies_{g.bodies}, tree_{tree} {
 		for(auto i = 0; i < nthreads; ++i) {
 			auto t = std::thread([this, i] { calcForcesLoop(i); });
@@ -158,19 +159,26 @@ struct Threads {
 		}
 	}
 
-	void stop() {
-		die_ = true;
-		go();
+	void exit() {
+		running_ = n_;
+		for(auto tid = 0; tid < n_; ++tid) {
+			{
+				std::lock_guard<std::mutex> lk(flagmut_[tid]);
+				flag_[tid] = Flag::exit;
+			}
+			flagcv_[tid].notify_one();
+		}
 		wait();
 	}
 
 	void go() {
 		running_ = n_;
 		for(auto tid = 0; tid < n_; ++tid) {
-			gomut_[tid].lock();
-			go_[tid] = 1;
-			gomut_[tid].unlock();
-			gocv_[tid].notify_one();
+			{
+				std::lock_guard<std::mutex> lk(flagmut_[tid]);
+				flag_[tid] = Flag::go;
+			}
+			flagcv_[tid].notify_one();
 		}
 	}
 
@@ -182,13 +190,12 @@ struct Threads {
 
   private:
 	const int n_;
-	std::vector<std::mutex> gomut_;
-	std::vector<std::condition_variable> gocv_;
-	std::vector<int> go_;
-	std::atomic_bool die_{false};
+	std::vector<std::mutex> flagmut_;
+	std::vector<std::condition_variable> flagcv_;
+	std::vector<Flag> flag_;
 	std::mutex runningmut_;
 	std::condition_variable runningcv_;
-	int running_;
+	std::atomic_int running_{0};
 	std::vector<Body>& bodies_;
 	BHTree& tree_;
 

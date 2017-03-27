@@ -228,7 +228,7 @@ int UI::keyboard(SDL_Keycode& kc) {
 }
 
 inline int UI::handleEvents(Galaxy& g) {
-	Pauser psr{sim_, 0};
+	Pauser psr(sim_, 0);
 	SDL_Event e;
 	while(SDL_PollEvent(&e)) {
 		switch(e.type) {
@@ -250,7 +250,7 @@ void UI::loop(Galaxy& g) {
 	center();
 	for(;;) {
 		if(handleEvents(g) == -1) {
-			sim_.stop();
+			sim_.exit();
 			return;
 		}
 		SDL_Delay(100);
