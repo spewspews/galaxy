@@ -74,8 +74,8 @@ struct Simulator {
   private:
 	std::atomic_bool paused_{false}, pause_{false}, stop_{false},
 	    stopped_{false};
-	std::condition_variable cvp_, cvpd_, cvstop_;
-	std::mutex mup_, mupd_, mustop_;
+	std::condition_variable pausecv_, pausedcv_, stopcv_;
+	std::mutex pausemut_, pausedmut_, stopmut_;
 	int pid_{-1};
 	const int nthreads_;
 

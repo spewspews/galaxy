@@ -41,9 +41,9 @@ void Simulator::pause(int id) {
 	if(paused_)
 		return;
 	pause_ = true;
-	std::unique_lock<std::mutex> lk(mupd_);
+	std::unique_lock<std::mutex> lk(pausedmut_);
 	while(!paused_)
-		cvpd_.wait(lk);
+		pausedcv_.wait(lk);
 }
 
 void Simulator::unpause(int id) {
@@ -51,42 +51,42 @@ void Simulator::unpause(int id) {
 		return;
 	pid_ = -1;
 	pause_ = false;
-	cvp_.notify_one();
-	std::unique_lock<std::mutex> lk(mupd_);
+	pausecv_.notify_one();
+	std::unique_lock<std::mutex> lk(pausedmut_);
 	while(paused_)
-		cvpd_.wait(lk);
+		pausedcv_.wait(lk);
 }
 
 void Simulator::stop() {
 	if(paused_) {
 		pause_ = false;
-		cvp_.notify_one();
-		std::unique_lock<std::mutex> lk(mupd_);
+		pausecv_.notify_one();
+		std::unique_lock<std::mutex> lk(pausedmut_);
 		while(paused_)
-			cvpd_.wait(lk);
+			pausedcv_.wait(lk);
 	}
 	stop_ = true;
 	if(!stopped_) {
-		std::unique_lock<std::mutex> lk(mustop_);
+		std::unique_lock<std::mutex> lk(stopmut_);
 		while(!stopped_)
-			cvstop_.wait(lk);
+			stopcv_.wait(lk);
 	}
 }
 
 void Simulator::doPause() {
 	paused_ = true;
-	cvpd_.notify_one();
-	std::unique_lock<std::mutex> lk(mup_);
+	pausedcv_.notify_one();
+	std::unique_lock<std::mutex> lk(pausemut_);
 	while(pause_)
-		cvp_.wait(lk);
+		pausecv_.wait(lk);
 	paused_ = false;
-	cvpd_.notify_one();
+	pausedcv_.notify_one();
 }
 
 void Simulator::doStop(Threads& thr) {
 	thr.stop();
 	stopped_ = true;
-	cvstop_.notify_one();
+	stopcv_.notify_one();
 }
 
 void Simulator::calcForces(Galaxy& g, BHTree& tree) {
