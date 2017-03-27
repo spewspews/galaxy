@@ -3,17 +3,18 @@
 
 void Threads::calcForcesLoop(const int tid) {
 	for(;;) {
-		{
-			std::unique_lock<std::mutex> lk(flagmut_[tid]);
-			while(flag_[tid] == Flag::wait)
-				flagcv_[tid].wait(lk);
-			if(flag_[tid] == Flag::exit) {
-				if(--running_ == 0)
-					runningcv_.notify_one();
-				return;
-			}
-			flag_[tid] = Flag::wait;
+		if(flags_[tid].val == ThreadFlag::Val::wait) {
+			std::unique_lock<std::mutex> lk(flags_[tid].mut);
+			while(flags_[tid].val == ThreadFlag::Val::wait)
+				flags_[tid].cv.wait(lk);
 		}
+
+		if(flags_[tid].val == ThreadFlag::Val::exit) {
+			if(--running_ == 0)
+				runningcv_.notify_one();
+			return;
+		}
+		flags_[tid].val = ThreadFlag::Val::wait;
 
 		auto nbody = bodies_.size() / (n_ + 1);
 		auto start = bodies_.begin() + nbody * tid;

@@ -147,12 +147,16 @@ struct UI {
 	int keyboard(SDL_Keycode&);
 };
 
-struct Threads {
-	enum class Flag { wait, go, exit };
+struct ThreadFlag {
+	enum class Val { wait, go, exit };
+	std::atomic<Val> val{Val::wait};
+	std::mutex mut;
+	std::condition_variable cv;
+};
 
+struct Threads {
 	Threads(const int nthreads, Galaxy& g, BHTree& tree)
-	    : n_{nthreads}, flagmut_(nthreads), flagcv_(nthreads), flag_(nthreads, Flag::wait),
-	      bodies_{g.bodies}, tree_{tree} {
+	    : n_{nthreads}, flags_(nthreads), bodies_{g.bodies}, tree_{tree} {
 		for(auto i = 0; i < nthreads; ++i) {
 			auto t = std::thread([this, i] { calcForcesLoop(i); });
 			t.detach();
@@ -162,11 +166,8 @@ struct Threads {
 	void exit() {
 		running_ = n_;
 		for(auto tid = 0; tid < n_; ++tid) {
-			{
-				std::lock_guard<std::mutex> lk(flagmut_[tid]);
-				flag_[tid] = Flag::exit;
-			}
-			flagcv_[tid].notify_one();
+			flags_[tid].val = ThreadFlag::Val::exit;
+			flags_[tid].cv.notify_one();
 		}
 		wait();
 	}
@@ -174,11 +175,8 @@ struct Threads {
 	void go() {
 		running_ = n_;
 		for(auto tid = 0; tid < n_; ++tid) {
-			{
-				std::lock_guard<std::mutex> lk(flagmut_[tid]);
-				flag_[tid] = Flag::go;
-			}
-			flagcv_[tid].notify_one();
+			flags_[tid].val = ThreadFlag::Val::go;
+			flags_[tid].cv.notify_one();
 		}
 	}
 
@@ -190,9 +188,7 @@ struct Threads {
 
   private:
 	const int n_;
-	std::vector<std::mutex> flagmut_;
-	std::vector<std::condition_variable> flagcv_;
-	std::vector<Flag> flag_;
+	std::vector<ThreadFlag> flags_;
 	std::mutex runningmut_;
 	std::condition_variable runningcv_;
 	std::atomic_int running_{0};
