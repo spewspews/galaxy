@@ -35,7 +35,7 @@ void Threads::calcForcesLoop(const int tid) {
 }
 
 void Simulator::pause(int id) {
-	if(pid_ != -1 && pid_ > id)
+	if(pid_ != -1 && id < pid_)
 		return;
 	pid_ = id;
 	if(paused_)
@@ -47,7 +47,7 @@ void Simulator::pause(int id) {
 }
 
 void Simulator::unpause(int id) {
-	if(!paused_ || pid_ != id)
+	if(!paused_ || id < pid_)
 		return;
 	pid_ = -1;
 	pause_ = false;
@@ -58,6 +58,13 @@ void Simulator::unpause(int id) {
 }
 
 void Simulator::stop() {
+	if(paused_) {
+		pause_ = false;
+		cvp_.notify_one();
+		std::unique_lock<std::mutex> lk(mupd_);
+		while(paused_)
+			cvpd_.wait(lk);
+	}
 	stop_ = true;
 	if(!stopped_) {
 		std::unique_lock<std::mutex> lk(mustop_);

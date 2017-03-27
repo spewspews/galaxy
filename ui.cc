@@ -216,10 +216,10 @@ int UI::keyboard(SDL_Keycode& kc) {
 		return -1;
 	case SDLK_SPACE:
 		if(paused_) {
-			sim_.unpause(2);
+			sim_.unpause(1);
 			paused_ = false;
 		} else {
-			sim_.pause(2);
+			sim_.pause(1);
 			paused_ = true;
 		}
 		break;
