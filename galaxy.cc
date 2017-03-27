@@ -4,7 +4,7 @@
 void Threads::calcForcesLoop(const int tid) {
 	for(;;) {
 		{
-			std::unique_lock<std::mutex> lk(gomu_[tid]);
+			std::unique_lock<std::mutex> lk(gomut_[tid]);
 			while(!go_[tid])
 				gocv_[tid].wait(lk);
 			go_[tid] = 0;

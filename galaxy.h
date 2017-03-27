@@ -150,7 +150,7 @@ struct UI {
 
 struct Threads {
 	Threads(const int nthreads, Galaxy& g, BHTree& tree)
-	    : n_{nthreads}, gomu_(nthreads), gocv_(nthreads), go_(nthreads, 0),
+	    : n_{nthreads}, gomut_(nthreads), gocv_(nthreads), go_(nthreads, 0),
 	      bodies_{g.bodies}, tree_{tree} {
 		for(auto i = 0; i < nthreads; ++i) {
 			auto t = std::thread([this, i] { calcForcesLoop(i); });
@@ -167,9 +167,9 @@ struct Threads {
 	void go() {
 		running_ = n_;
 		for(auto tid = 0; tid < n_; ++tid) {
-			gomu_[tid].lock();
+			gomut_[tid].lock();
 			go_[tid] = 1;
-			gomu_[tid].unlock();
+			gomut_[tid].unlock();
 			gocv_[tid].notify_one();
 		}
 	}
@@ -182,7 +182,7 @@ struct Threads {
 
   private:
 	const int n_;
-	std::vector<std::mutex> gomu_;
+	std::vector<std::mutex> gomut_;
 	std::vector<std::condition_variable> gocv_;
 	std::vector<int> go_;
 	std::atomic_bool die_{false};
