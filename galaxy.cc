@@ -10,12 +10,12 @@ void Threads::calcForcesLoop(const int tid) {
 			go_[tid] = 0;
 		}
 		if(die_) {
-			runningmu_.lock();
+			runningmut_.lock();
 			if(--running_ == 0) {
-				runningmu_.unlock();
+				runningmut_.unlock();
 				runningcv_.notify_one();
 			} else
-				runningmu_.unlock();
+				runningmut_.unlock();
 			return;
 		}
 
@@ -25,12 +25,12 @@ void Threads::calcForcesLoop(const int tid) {
 		for(auto& i = start; i < end; ++i)
 			tree_.calcforce(*i);
 
-		runningmu_.lock();
+		runningmut_.lock();
 		if(--running_ == 0) {
-			runningmu_.unlock();
+			runningmut_.unlock();
 			runningcv_.notify_one();
 		} else
-			runningmu_.unlock();
+			runningmut_.unlock();
 	}
 }
 
@@ -73,7 +73,7 @@ void Simulator::stop() {
 	}
 }
 
-void Simulator::doPause() {
+inline void Simulator::doPause() {
 	paused_ = true;
 	pausedcv_.notify_one();
 	std::unique_lock<std::mutex> lk(pausemut_);
@@ -83,8 +83,8 @@ void Simulator::doPause() {
 	pausedcv_.notify_one();
 }
 
-void Simulator::doStop(Threads& thr) {
-	thr.stop();
+inline void Simulator::doStop(Threads& threads) {
+	threads.stop();
 	stopped_ = true;
 	stopcv_.notify_one();
 }

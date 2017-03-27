@@ -21,7 +21,7 @@ void Mouse::operator()(Galaxy& g) {
 	ui_.sim_.pause(0);
 }
 
-void Mouse::update() {
+inline void Mouse::update() {
 	Pauser psr{ui_.sim_, 0};
 	SDL_RenderPresent(ui_.renderer_);
 	SDL_Delay(5);
@@ -86,7 +86,7 @@ void Mouse::setVel(Body& b, const Galaxy& g) {
 	SDL_WarpMouseInWindow(nullptr, oldp.x, oldp.y);
 }
 
-void Mouse::zoom(const Galaxy& g) {
+inline void Mouse::zoom(const Galaxy& g) {
 	auto op = p;
 	auto oscale = ui_.scale_;
 	Point sc;
@@ -107,7 +107,7 @@ void Mouse::zoom(const Galaxy& g) {
 	}
 }
 
-void Mouse::move(const Galaxy& g) {
+inline void Mouse::move(const Galaxy& g) {
 	auto oldp = p;
 	for(;;) {
 		update();
@@ -227,7 +227,7 @@ int UI::keyboard(SDL_Keycode& kc) {
 	return 0;
 }
 
-int UI::handleEvents(Galaxy& g) {
+inline int UI::handleEvents(Galaxy& g) {
 	Pauser psr{sim_, 0};
 	SDL_Event e;
 	while(SDL_PollEvent(&e)) {

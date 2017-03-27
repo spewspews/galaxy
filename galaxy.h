@@ -80,8 +80,8 @@ struct Simulator {
 	const int nthreads_;
 
 	void simLoop(Galaxy&, UI&);
-	void doPause();
-	void doStop();
+	inline void doPause();
+	inline void doStop();
 	void doStop(Threads&);
 	void verlet(Galaxy&);
 	void calcForces(Galaxy&, BHTree&);
@@ -93,7 +93,7 @@ struct Pauser {
 
   private:
 	Simulator& sim_;
-	int id_;
+	const int id_;
 };
 
 struct Mouse {
@@ -102,15 +102,15 @@ struct Mouse {
 	Vector vp;
 
 	void operator()(Galaxy&);
-	void update();
 
   private:
 	Uint32 buttons_;
 	UI& ui_;
 
+	inline void update();
 	void body(Galaxy&);
-	void zoom(const Galaxy&);
-	void move(const Galaxy&);
+	inline void zoom(const Galaxy&);
+	inline void move(const Galaxy&);
 	void setSize(Body&, const Galaxy&);
 	void setVel(Body&, const Galaxy&);
 };
@@ -144,7 +144,7 @@ struct UI {
 	Point toPoint(const Vector&) const;
 	void center();
 	void init();
-	int handleEvents(Galaxy&);
+	inline int handleEvents(Galaxy&);
 	int keyboard(SDL_Keycode&);
 };
 
@@ -175,7 +175,7 @@ struct Threads {
 	}
 
 	void wait() {
-		std::unique_lock<std::mutex> lk(runningmu_);
+		std::unique_lock<std::mutex> lk(runningmut_);
 		while(running_ > 0)
 			runningcv_.wait(lk);
 	}
@@ -186,7 +186,7 @@ struct Threads {
 	std::vector<std::condition_variable> gocv_;
 	std::vector<int> go_;
 	std::atomic_bool die_{false};
-	std::mutex runningmu_;
+	std::mutex runningmut_;
 	std::condition_variable runningcv_;
 	int running_;
 	std::vector<Body>& bodies_;
