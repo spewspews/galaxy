@@ -166,7 +166,10 @@ struct Threads {
 	void exit() {
 		running_ = n_;
 		for(auto tid = 0; tid < n_; ++tid) {
-			flags_[tid].val = ThreadFlag::Val::exit;
+			{
+				std::lock_guard<std::mutex> lk(flags_[tid].mut);
+				flags_[tid].val = ThreadFlag::Val::exit;
+			}
 			flags_[tid].cv.notify_one();
 		}
 		wait();
@@ -175,7 +178,10 @@ struct Threads {
 	void go() {
 		running_ = n_;
 		for(auto tid = 0; tid < n_; ++tid) {
-			flags_[tid].val = ThreadFlag::Val::go;
+			{
+				std::lock_guard<std::mutex> lk(flags_[tid].mut);
+				flags_[tid].val = ThreadFlag::Val::go;
+			}
 			flags_[tid].cv.notify_one();
 		}
 	}
