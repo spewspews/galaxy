@@ -8,7 +8,7 @@ all: galaxy mkgalaxy
 install: all
 	cp galaxy mkgalaxy /usr/local/bin
 
-galaxy: galaxy.o ui.o bhtree.o body.o
+galaxy: galaxy.o ui.o bhtree.o body.o simulate.o
 
 mkgalaxy: mkgalaxy.o body.o
 
