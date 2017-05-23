@@ -86,12 +86,13 @@ struct Simulator {
 	void calcForces(Galaxy&, BHTree&);
 };
 
-struct Pauser {
-	Pauser(Simulator& sim, int id) : sim_{sim}, id_{id} { sim_.pause(id_); }
-	~Pauser() { sim_.unpause(id_); }
+template <class Pausable>
+struct PauseGuard {
+	PauseGuard(Pausable& p, int id) : p_{p}, id_{id} { p_.pause(id_); }
+	~PauseGuard() { p_.unpause(id_); }
 
   private:
-	Simulator& sim_;
+	Pausable& p_;
 	const int id_;
 };
 

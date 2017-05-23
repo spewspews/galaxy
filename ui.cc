@@ -22,7 +22,7 @@ void Mouse::operator()(Galaxy& g) {
 }
 
 inline void Mouse::update() {
-	Pauser psr{ui_.sim_, 0};
+	PauseGuard<Simulator> pg(ui_.sim_, 0);
 	SDL_RenderPresent(ui_.renderer_);
 	SDL_Delay(5);
 	SDL_PumpEvents();
@@ -32,7 +32,7 @@ inline void Mouse::update() {
 }
 
 void Mouse::body(Galaxy& g) {
-	Pauser psr{ui_.sim_, 1};
+	PauseGuard<Simulator> pg(ui_.sim_, 1);
 	Body b(ui_.scale_);
 	b.p = vp;
 	for(;;) {
@@ -99,7 +99,7 @@ inline void Mouse::zoom(const Galaxy& g) {
 		auto d = p - op;
 		auto z = tanh((double)d.y / 200) + 1;
 		auto gsc = ui_.toVector(sc);
-		Pauser psr{ui_.sim_, 0};
+		PauseGuard<Simulator> pg(ui_.sim_, 0);
 		ui_.scale_ = z * oscale;
 		auto off = ui_.toPoint(gsc) - sc;
 		ui_.orig_ -= off;
@@ -113,7 +113,7 @@ inline void Mouse::move(const Galaxy& g) {
 		update();
 		if(buttons_ != SDL_BUTTON_RMASK)
 			break;
-		Pauser psr{ui_.sim_, 0};
+		PauseGuard<Simulator> pg(ui_.sim_, 0);
 		ui_.orig_ += p - oldp;
 		oldp = p;
 		ui_.draw(g);
@@ -197,7 +197,7 @@ void UI::init() {
 }
 
 void UI::center() {
-	Pauser psr{sim_, 0};
+	PauseGuard<Simulator> pg(sim_, 0);
 	SDL_PumpEvents();
 	SDL_FlushEvent(SDL_WINDOWEVENT_RESIZED);
 	SDL_GetWindowSize(screen_, &orig_.x, &orig_.y);
@@ -228,7 +228,7 @@ int UI::keyboard(SDL_Keycode& kc) {
 }
 
 inline int UI::handleEvents(Galaxy& g) {
-	Pauser psr(sim_, 0);
+	PauseGuard<Simulator> pg(sim_, 0);
 	SDL_Event e;
 	while(SDL_PollEvent(&e)) {
 		switch(e.type) {
